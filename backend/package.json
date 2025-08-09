@@ -1,0 +1,24 @@
+{
+  "name": "pocketpal-backend",
+  "version": "0.1.0",
+  "description": "Backend for PocketPal, a scalable personal finance app for budgeting, transaction tracking, and bank integration.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "personal-finance",
+    "budgeting",
+    "transaction-tracking",
+    "node",
+    "express"
+  ],
+  "author": "PocketPal Team",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "^3.5.3"
+  }
+}
