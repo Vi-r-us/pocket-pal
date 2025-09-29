@@ -1,0 +1,1 @@
+export const DB_NAME = 'pocket_pal_db'; // Name of the database
