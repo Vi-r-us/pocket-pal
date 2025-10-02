@@ -38,4 +38,4 @@ app.use(cookieParser());
 // Importing and using user routes
 app.use("/api/v1/users", userRoutes);
 
-export default app;
+export default app; 
