@@ -23,7 +23,7 @@ export const uploadImageOnCloudinary = async (filePath, folder = "pocketpal", pu
       return null;
     }
 
-    const absolutePath = path.resolve(filePath);
+    const absolutePath = filePath;
 
     if (!fs.existsSync(filePath)) {
       log("File does not exist at path:", filePath);
@@ -54,11 +54,10 @@ export const uploadImageOnCloudinary = async (filePath, folder = "pocketpal", pu
     const result = await cloudinary.uploader.upload(absolutePath, options);
     console.log("Cloudinary upload result:", result);
 
+    // Remove the file from local storage after upload
     try {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (error) {}
-
-    // Remove the file from local storage after upload
 
     return result;
   } catch (error) {
