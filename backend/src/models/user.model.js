@@ -15,14 +15,14 @@ class User extends Model {
 
   // Instance method to generate access JWT
   generateAccessToken() {
-    return jwt.sign({ id: this.id, email: this.email, username: this.username }, JWT_ACCESS_SECRET, {
+    return jwt.sign({ id: this.user_id, email: this.email, username: this.username }, JWT_ACCESS_SECRET, {
       expiresIn: JWT_ACCESS_EXPIRES_IN,
     });
   }
 
   // Instance method to generate refresh JWT
   generateRefreshToken() {
-    return jwt.sign({ id: this.id }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
+    return jwt.sign({ id: this.user_id }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
   }
 }
 
@@ -112,6 +112,9 @@ const defineUserModel = (sequelize) => {
         { fields: ["email"], unique: true },
         { fields: ["public_id"], unique: true },
       ],
+      scopes: {
+        withSecrets: { attributes: { include: ["password", "refreshToken"] } }, // to include when needed
+      },
       defaultScope: {
         attributes: { exclude: ["password", "refreshToken"] }, // hides by default
       },

@@ -1,55 +1,41 @@
+import { Op } from "sequelize";
 import { User } from "../models/index.js";
 import ApiError from "../utils/ApiError.js";
 import { uploadImageOnCloudinary } from "../utils/cloudinary.js";
 import { createLog } from "./log.service.js";
 
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    // Generate tokens
+    const user = await User.findByPk(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    // Save refresh token in DB
+    user.refreshToken = refreshToken;
+    await user.save({ validate: false });
+
+    // Return tokens
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(500, "Failed to generate tokens");
+  }
+};
+
 const registerUser = async ({ username, email, fullname, password, avatarFile, coverFile }) => {
   // Validate required fields
   if ([username, email, fullname, password].some((field) => field?.trim() === "")) {
-    // TODO: Log error
-    // await createLog({
-    //   log_type: "error",
-    //   action: "registerUser",
-    //   entity: "users",
-    //   message: "Missing required fields",
-    //   details: { username, email },
-    // });
     throw new ApiError(400, "Missing required fields");
   }
 
   // Check for existing user
-  try {
-    const existingUser = await User.findOne({ where: { username } });
-    if (existingUser) {
-      // await createLog({
-      //   log_type: "error",
-      //   action: "registerUser",
-      //   entity: "users",
-      //   message: "Username already exists",
-      //   details: { username },
-      // });
-      throw new ApiError(409, "Username already exists");
-    }
-  } catch (error) {
-    // await createLog({
-    //   log_type: "error",
-    //   action: "registerUser",
-    //   entity: "users",
-    //   message: "Error checking existing username",
-    //   details: { error: error.message || error },
-    // });
-    console.log("Error checking existing username:", error);
-    throw new ApiError(500, "Internal server error");
-  }
-
-  try {
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      throw new ApiError(409, "Email already exists");
-    }
-  } catch (error) {
-    console.log("Error checking existing email:", error);
-    throw new ApiError(500, "Internal server error");
+  const existingUser = await User.findOne({
+    where: {
+      [Op.or]: [{ username }, { email }],
+    },
+  });
+  if (existingUser) {
+    throw new ApiError(409, "Username or email already exists");
   }
 
   // Check password strength
@@ -98,4 +84,53 @@ const registerUser = async ({ username, email, fullname, password, avatarFile, c
   return userObj;
 };
 
-export { registerUser };
+const loginUser = async ({ email, username, password }) => {
+  // Validate required fields (email or username and password)
+  if ((!username && !email) || !password) {
+    throw new ApiError(400, "Username or email and password are required");
+  }
+
+  // Find user by username or email
+  const user = await User.scope("withSecrets").findOne({
+    where: {
+      [Op.or]: [{ username: username || null }, { email: email || null }],
+    },
+  });
+
+  // if user not found, throw error
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Check password
+  const isPasswordValid = await user.isPasswordCorrect(password);
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Invalid password");
+  }
+
+  // Generate access token and refresh token
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user.user_id);
+
+  // Fetch fresh user data
+  const loggedInUser = await User.findByPk(user.user_id);
+
+  // Prepare response by removing sensitive user data (without password and refresh token) and tokens
+  const userObj = { ...loggedInUser.get() };
+  delete userObj.user_id;
+  delete userObj.password;
+  delete userObj.refreshToken;
+
+  // Return user data and tokens
+  return { user: userObj, accessToken, refreshToken };
+};
+
+const logoutUser = async (userId) => {
+  // Find user by ID
+  const user = await User.findByPk(userId);
+
+  // set refresh token to null
+  user.refreshToken = null;
+  await user.save({ validate: false });
+};
+
+export { registerUser, loginUser, logoutUser };

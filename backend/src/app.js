@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import userRoutes from "./routes/user.routes.js";
+import ApiResponse from "./utils/ApiResponse.js";
 
 const app = express();
 
@@ -38,4 +39,17 @@ app.use(cookieParser());
 // Importing and using user routes
 app.use("/api/v1/users", userRoutes);
 
-export default app; 
+// Global error handler (all failures)
+// This middleware handles errors that occur in the application
+app.use((err, req, res, next) => {
+  const status = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  const errors = err.errors || null;
+
+  // TODO: Log errors
+  console.log("Error: ", err);
+
+  res.status(status).json(new ApiResponse(status, null, message));
+});
+
+export default app;
