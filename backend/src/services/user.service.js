@@ -1,4 +1,5 @@
 import { Op } from "sequelize";
+import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
 import ApiError from "../utils/ApiError.js";
 import { uploadImageOnCloudinary } from "../utils/cloudinary.js";
@@ -133,4 +134,25 @@ const logoutUser = async (userId) => {
   await user.save({ validate: false });
 };
 
-export { registerUser, loginUser, logoutUser };
+const refreshTokens = async (incomingRefreshToken) => {
+  try {
+    // Verify the refresh token using the secret key
+    const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+    // Find user by ID from the decoded token
+    const user = await User.scope('withSecrets').findByPk(decodedToken?.id);
+
+    if (!user || user.refreshToken !== incomingRefreshToken) {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+
+    // Generate access token and refresh token
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user.user_id);
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(401, error.message || "Invalid refresh token", error);
+  }
+};
+
+export { registerUser, loginUser, logoutUser, refreshTokens };

@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 const JWT_ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET || "default_jwt_secret";
 const JWT_ACCESS_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRY || "15m";
-const JWT_REFRESH_SECRET = process.env.ACCESS_TOKEN_SECRET || "default_jwt_secret";
+const JWT_REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "default_jwt_secret";
 const JWT_REFRESH_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRY || "7d";
 
 class User extends Model {

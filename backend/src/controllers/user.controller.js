@@ -2,6 +2,7 @@ import {
   registerUser as registerUserService,
   loginUser as loginUserService,
   logoutUser as logoutUserService,
+  refreshTokens as refreshTokensService,
 } from "../services/user.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -42,7 +43,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-  // User ID from auth middleware 
+  // User ID from auth middleware
   const userId = req.user.user_id;
   // Logout user
   await logoutUserService(userId);
@@ -62,4 +63,30 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, "User logged out successfully"));
 });
 
-export { registerUser, loginUser, logoutUser };
+const refreshTokens = asyncHandler(async (req, res) => {
+  const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+
+  if (!incomingRefreshToken) {
+    throw new ApiError(400, "Refresh token is required");
+  }
+
+  const { accessToken, refreshToken } = await refreshTokensService(incomingRefreshToken);
+
+  // Cookie options
+  const options = {
+    httpOnly: true,
+    // secure: process.env.NODE_ENV === "production",
+    secure: true,
+    sameSite: "Strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  };
+
+  // Set refresh token and access token in HTTP-only cookie
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(new ApiResponse(200, accessToken, "Access token refreshed successfully"));
+});
+
+export { registerUser, loginUser, logoutUser, refreshTokens };
