@@ -3,9 +3,15 @@ import {
   loginUser as loginUserService,
   logoutUser as logoutUserService,
   refreshTokens as refreshTokensService,
+  getProfile as getProfileService,
+  updateProfile as updateProfileService,
+  updateAvatar as updateAvatarService,
+  updatePassword as updatePasswordService,
+  updateCoverImage as updateCoverImageService,
 } from "../services/user.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
+import ApiError from "../utils/ApiError.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const userData = {
@@ -89,4 +95,50 @@ const refreshTokens = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, accessToken, "Access token refreshed successfully"));
 });
 
-export { registerUser, loginUser, logoutUser, refreshTokens };
+// Profile controllers
+const getProfile = asyncHandler(async (req, res) => {
+  const userId = req.user?.user_id;
+  const profile = await getProfileService(userId);
+  return res.status(200).json(new ApiResponse(200, profile, "User profile fetched successfully"));
+});
+
+const updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.user?.user_id;
+  const updated = await updateProfileService(userId, req.body);
+  return res.status(200).json(new ApiResponse(200, updated, "Profile updated successfully"));
+});
+
+const updateAvatar = asyncHandler(async (req, res) => {
+  const userId = req.user?.user_id;
+  const avatarFile = req.files?.avatar?.[0] || req.file || null;
+  if (!avatarFile) throw new ApiError(400, "Avatar file is required");
+  const updated = await updateAvatarService(userId, avatarFile);
+  return res.status(200).json(new ApiResponse(200, updated, "Avatar updated successfully"));
+});
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+  const userId = req.user?.user_id;
+  const coverFile = req.files?.coverImage?.[0] || req.file || null;
+  if (!coverFile) throw new ApiError(400, "Cover image file is required");
+  const updated = await updateCoverImageService(userId, coverFile);
+  return res.status(200).json(new ApiResponse(200, updated, "Cover image updated successfully"));
+});
+
+const updatePassword = asyncHandler(async (req, res) => {
+  const userId = req.user?.user_id;
+  const { currentPassword, newPassword } = req.body;
+  await updatePasswordService(userId, currentPassword, newPassword);
+  return res.status(200).json(new ApiResponse(200, null, "Password updated successfully"));
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshTokens,
+  getProfile,
+  updateProfile,
+  updateAvatar,
+  updateCoverImage,
+  updatePassword,
+};

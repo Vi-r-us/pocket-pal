@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { registerUser, loginUser, logoutUser, refreshTokens } from "../controllers/user.controller.js";
+import { registerUser, loginUser, logoutUser, refreshTokens, getProfile } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+// Auth and Account Access Routes
 router.route("/register").post(
   upload.fields([
     { name: "avatar", maxCount: 1 },
@@ -12,11 +13,19 @@ router.route("/register").post(
   ]),
   registerUser
 );
-
 router.route("/login").post(loginUser);
-
-// Secured Routes
 router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/refresh-tokens").post(refreshTokens);
+
+// TODO: Password Reset Routes
+// router.post("/forgot-password", forgotPassword);
+// router.post("/reset-password", resetPassword);
+
+// Profile Management Routes
+router.get("/me", verifyJWT, getProfile);
+router.patch("/me", verifyJWT, updateProfile);
+router.patch("/me/avatar", verifyJWT, updateAvatar);
+router.patch("/me/password", verifyJWT, updatePassword);
+router.patch("/me/cover", verifyJWT, updateCoverImage);
 
 export default router;
