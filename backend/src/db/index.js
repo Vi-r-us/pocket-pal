@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import pool from "./pool.js";
 import { sequelize } from "./sequelize.js";
+// Ensure models are loaded so sequelize knows about them
+import "../models/index.js";
 
 dotenv.config();
 
@@ -25,6 +27,11 @@ dotenv.config();
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
+
+    // Create / update tables based on models.
+    // In dev use alter: true. For production use migrations instead.
+    await sequelize.sync({ alter: true });
+
     const [result] = await sequelize.query('SELECT current_database()');
 
     console.log("Current DB:", result[0].current_database);

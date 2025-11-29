@@ -205,16 +205,33 @@ const refreshTokens = async (incomingRefreshToken) => {
 };
 
 /**
- * Get profile for a user (without sensitive fields)
+ * Retrieves the public profile for a user by primary key.
+ *
+ * Validates the incoming userId, fetches the user from the database,
+ * strips sensitive fields (password, refreshToken, internal user_id) and
+ * returns a safe plain object suitable for returning in API responses.
+ *
+ * @param {number|string} userId - Primary key (numeric or UUID) of the user to fetch.
+ * @returns {Promise<Object>} - Safe user object without sensitive fields.
+ * @throws {ApiError} - 400 if userId is missing, 404 if user not found, 500 for DB errors.
  */
 const getProfile = async (userId) => {
-  const user = await User.findByPk(userId);
-  if (!user) throw new ApiError(404, "User not found");
-  const userObj = { ...user.get() };
-  delete userObj.password;
-  delete userObj.refreshToken;
-  delete userObj.user_id;
-  return userObj;
+  if (userId === undefined || userId === null || userId === "") {
+    throw new ApiError(400, "User ID is required");
+  }
+
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) throw new ApiError(404, "User not found");
+
+    // get plain object and safely remove sensitive fields
+    const userObj = user.get({ plain: true }) || {};
+    const { password, refreshToken, user_id, ...safeUser } = userObj;
+
+    return safeUser;
+  } catch (error) {
+    throw new ApiError(500, "Failed to fetch user profile", error);
+  }
 };
 
 /**

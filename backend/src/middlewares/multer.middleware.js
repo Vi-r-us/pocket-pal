@@ -4,10 +4,19 @@
  */
 
 import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // Configure storage settings for Multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
+    const dest = path.resolve(process.cwd(), "public", "uploads");
+    try {
+      // Ensure directory exists (recursive)
+      fs.mkdirSync(dest, { recursive: true });
+    } catch (err) {
+      // ignore if already exists or let multer handle error
+    }
     // Set the destination directory for uploaded files
     cb(null, "./public/uploads");
   },
