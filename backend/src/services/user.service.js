@@ -4,6 +4,7 @@ import { User } from "../models/index.js";
 import ApiError from "../utils/ApiError.js";
 import { uploadImageOnCloudinary } from "../utils/cloudinary.js";
 import { createLog } from "./log.service.js";
+import handleServerError from "../utils/handleServerError.js";
 
 /**
  * Generates an access token and a refresh token for the given user ID.
@@ -60,7 +61,7 @@ const registerUser = async ({ username, email, fullname, password, avatarFile, c
   }
 
   // Check password strength
-  if (password.length < 8) {
+  if (password.trim().length < 8) {
     throw new ApiError(400, "Password must be at least 8 characters long");
   }
 
@@ -230,7 +231,7 @@ const getProfile = async (userId) => {
 
     return safeUser;
   } catch (error) {
-    throw new ApiError(500, "Failed to fetch user profile", error);
+    handleServerError(error, "Failed to fetch user profile", 500);
   }
 };
 
@@ -292,7 +293,7 @@ const updateAvatar = async (userId, avatarFile) => {
 
     return safeUser;
   } catch (error) {
-    throw new ApiError(500, "Failed to update avatar", error);
+    handleServerError(error, "Failed to update avatar", 500);
   }
 };
 
@@ -327,7 +328,7 @@ const updateCoverImage = async (userId, coverFile) => {
 
     return safeUser;
   } catch (error) {
-    throw new ApiError(500, "Failed to update cover image", error);
+    handleServerError(error, "Failed to update cover image", 500);
   }
 };
 
@@ -336,24 +337,30 @@ const updateCoverImage = async (userId, coverFile) => {
  */
 const updatePassword = async (userId, currentPassword, newPassword) => {
   if (!currentPassword || !newPassword) throw new ApiError(400, "Both current and new passwords are required");
-  if (newPassword.length < 8) throw new ApiError(400, "New password must be at least 8 characters long");
+  if (currentPassword.trim() === newPassword.trim())
+    throw new ApiError(400, "New password must be different from current password");
+  if (newPassword.trim().length < 8) throw new ApiError(400, "New password must be at least 8 characters long");
 
-  const user = await User.scope("withSecrets").findByPk(userId);
-  if (!user) throw new ApiError(404, "User not found");
+  try {
+    const user = await User.scope("withSecrets").findByPk(userId);
+    if (!user) throw new ApiError(404, "User not found");
 
-  const match = await user.isPasswordCorrect(currentPassword);
-  if (!match) throw new ApiError(401, "Current password is incorrect");
+    const match = await user.isPasswordCorrect(currentPassword);
+    if (!match) throw new ApiError(401, "Current password is incorrect");
 
-  user.password = newPassword;
-  await user.save();
-  await createLog({
-    user_id: user.user_id,
-    log_type: "change",
-    action: "update_password",
-    entity: "user",
-    entity_id: user.public_id,
-  });
-  return true;
+    user.password = newPassword.trim();
+    await user.save();
+    // await createLog({
+    //   user_id: user.user_id,
+    //   log_type: "change",
+    //   action: "update_password",
+    //   entity: "user",
+    //   entity_id: user.public_id,
+    // });
+    return true;
+  } catch (error) {
+    handleServerError(error, "Failed to update password", 500);
+  }
 };
 
 export {
