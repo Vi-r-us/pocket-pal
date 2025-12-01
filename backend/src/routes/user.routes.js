@@ -34,8 +34,8 @@ router.route("/refresh-tokens").post(refreshTokens);
 // Profile Management Routes
 router.get("/me", verifyJWT, getProfile);
 router.patch("/me", verifyJWT, updateProfile);
-router.patch("/me/avatar", verifyJWT, updateAvatar);
-router.patch("/me/cover", verifyJWT, updateCoverImage);
+router.patch("/me/avatar", verifyJWT, upload.fields([{ name: "avatar", maxCount: 1 }]), updateAvatar);
+router.patch("/me/cover", verifyJWT, upload.fields([{ name: "coverImage", maxCount: 1 }]), updateCoverImage);
 router.patch("/me/password", verifyJWT, updatePassword);
 
 export default router;

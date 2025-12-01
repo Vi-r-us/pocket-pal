@@ -265,52 +265,70 @@ const updateProfile = async (userId, data = {}) => {
  * Update avatar image
  */
 const updateAvatar = async (userId, avatarFile) => {
-  const user = await User.findByPk(userId);
-  if (!user) throw new ApiError(404, "User not found");
+  if (userId === undefined || userId === null || userId === "") {
+    throw new ApiError(400, "User ID is required");
+  }
   if (!avatarFile) throw new ApiError(400, "Avatar file is required");
 
-  const avatarUrl = await uploadImageOnCloudinary(avatarFile.path, "pocketpal/avatars", user.username);
-  user.avatar = avatarUrl?.secure_url || user.avatar;
-  await user.save({ validate: false });
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) throw new ApiError(404, "User not found");
 
-  const userObj = { ...user.get() };
-  delete userObj.password;
-  delete userObj.refreshToken;
-  delete userObj.user_id;
-  await createLog({
-    user_id: user.user_id,
-    log_type: "change",
-    action: "update_avatar",
-    entity: "user",
-    entity_id: user.public_id,
-  });
-  return userObj;
+    const avatarUrl = await uploadImageOnCloudinary(avatarFile.path, "pocketpal/avatars", user.username);
+    user.avatar = avatarUrl?.secure_url || user.avatar;
+    await user.save({ validate: false });
+
+    // get plain object and safely remove sensitive fields
+    const userObj = user.get({ plain: true }) || {};
+    const { password, refreshToken, user_id, ...safeUser } = userObj;
+
+    // await createLog({
+    //   user_id: user.user_id,
+    //   log_type: "change",
+    //   action: "update_avatar",
+    //   entity: "user",
+    //   entity_id: user.public_id,
+    // });
+
+    return safeUser;
+  } catch (error) {
+    throw new ApiError(500, "Failed to update avatar", error);
+  }
 };
 
 /**
  * Update cover image
  */
 const updateCoverImage = async (userId, coverFile) => {
-  const user = await User.findByPk(userId);
-  if (!user) throw new ApiError(404, "User not found");
+  if (userId === undefined || userId === null || userId === "") {
+    throw new ApiError(400, "User ID is required");
+  }
   if (!coverFile) throw new ApiError(400, "Cover image file is required");
 
-  const coverUrl = await uploadImageOnCloudinary(coverFile.path, "pocketpal/covers", user.username);
-  user.coverImage = coverUrl?.secure_url || user.coverImage;
-  await user.save({ validate: false });
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) throw new ApiError(404, "User not found");
 
-  const userObj = { ...user.get() };
-  delete userObj.password;
-  delete userObj.refreshToken;
-  delete userObj.user_id;
-  await createLog({
-    user_id: user.user_id,
-    log_type: "change",
-    action: "update_cover",
-    entity: "user",
-    entity_id: user.public_id,
-  });
-  return userObj;
+    const coverUrl = await uploadImageOnCloudinary(coverFile.path, "pocketpal/covers", user.username);
+    user.coverImage = coverUrl?.secure_url || user.coverImage;
+    await user.save({ validate: false });
+
+    // get plain object and safely remove sensitive fields
+    const userObj = user.get({ plain: true }) || {};
+    const { password, refreshToken, user_id, ...safeUser } = userObj;
+
+    // await createLog({
+    //   user_id: user.user_id,
+    //   log_type: "change",
+    //   action: "update_cover",
+    //   entity: "user",
+    //   entity_id: user.public_id,
+    // });
+
+    return safeUser;
+  } catch (error) {
+    throw new ApiError(500, "Failed to update cover image", error);
+  }
 };
 
 /**
