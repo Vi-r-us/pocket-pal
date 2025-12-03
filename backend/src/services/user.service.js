@@ -239,27 +239,37 @@ const getProfile = async (userId) => {
  * Update profile fields (username, email, fullname)
  */
 const updateProfile = async (userId, data = {}) => {
-  const user = await User.findByPk(userId);
-  if (!user) throw new ApiError(404, "User not found");
+  if (userId === undefined || userId === null || userId === "") {
+    throw new ApiError(400, "User ID is required");
+  }
 
-  const allowed = ["username", "email", "fullname"];
-  allowed.forEach((key) => {
-    if (data[key] !== undefined) user[key] = data[key];
-  });
+  if (Object.keys(data).length === 0) throw new ApiError(400, "Data is required");
 
-  await user.save();
-  const userObj = { ...user.get() };
-  delete userObj.password;
-  delete userObj.refreshToken;
-  delete userObj.user_id;
-  await createLog({
-    user_id: user.user_id,
-    log_type: "change",
-    action: "update_profile",
-    entity: "user",
-    entity_id: user.public_id,
-  });
-  return userObj;
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) throw new ApiError(404, "User not found");
+  
+    const allowed = ["username", "email", "fullname"];
+    allowed.forEach((key) => {
+      if (data[key] !== undefined) user[key] = data[key];
+    });
+    await user.save();
+    
+    const userObj = user.get({ plain: true }) || {};
+    const { password, refreshToken, user_id, ...safeUser } = userObj;
+
+    // await createLog({
+    //   user_id: user.user_id,
+    //   log_type: "change",
+    //   action: "update_profile",
+    //   entity: "user",
+    //   entity_id: user.public_id,
+    // });
+
+    return safeUser;
+  } catch (error) {
+    handleServerError(error, "Failed to update profile", 500);
+  }
 };
 
 /**

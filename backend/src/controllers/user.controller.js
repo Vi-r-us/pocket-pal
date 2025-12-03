@@ -104,6 +104,8 @@ const getProfile = asyncHandler(async (req, res) => {
 
 const updateProfile = asyncHandler(async (req, res) => {
   const userId = req.user?.user_id;
+  console.log(userId, req.body);
+  
   const updated = await updateProfileService(userId, req.body);
   return res.status(200).json(new ApiResponse(200, updated, "Profile updated successfully"));
 });
