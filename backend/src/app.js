@@ -3,6 +3,8 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import userRoutes from "./routes/user.routes.js";
 import ApiResponse from "./utils/ApiResponse.js";
+import logger from "./utils/logger.js";
+import requestLogger from "./middlewares/requestLogger.js";
 
 const app = express();
 
@@ -36,6 +38,9 @@ app.use(express.static("public"));
 // This middleware parses cookies attached to the client request object
 app.use(cookieParser());
 
+// Request logger (attach req.id and log basic request info)
+app.use(requestLogger);
+
 // Importing and using user routes
 app.use("/api/v1/users", userRoutes);
 
@@ -46,8 +51,14 @@ app.use((err, req, res, next) => {
   const message = err.message || "Internal Server Error";
   const errors = err.errors || null;
 
-  // TODO: Log errors
-  console.log("Error: ", err);
+  // Log errors with structured logger
+  try {
+    logger.error({ err, reqId: req.id, method: req.method, path: req.path, user: req.user?.public_id || req.user?.user_id || null }, "Error occurred");
+  } catch (logErr) {
+    // fall back to console if logger fails
+    // eslint-disable-next-line no-console
+    console.error("Error logging failed:", logErr);
+  }
 
   res.status(status).json(new ApiResponse(status, null, message));
 });

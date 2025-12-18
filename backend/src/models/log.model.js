@@ -15,11 +15,11 @@ const defineLogModel = (sequelize) => {
       log_type: {
         type: DataTypes.STRING(20),
         allowNull: false,
-        validate: { isIn: [["audit", "change", "error"]] },
+        validate: { isIn: [["audit", "change", "error", "system"]] },
       }, // audit, change, error
       action: DataTypes.STRING(50),
       entity: DataTypes.STRING(50),
-      entity_id: DataTypes.INTEGER,
+      entity_id: DataTypes.STRING(50),
       field_name: DataTypes.STRING(50),
       old_value: DataTypes.JSONB,
       new_value: DataTypes.JSONB,

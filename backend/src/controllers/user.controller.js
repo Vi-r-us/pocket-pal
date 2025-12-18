@@ -12,6 +12,7 @@ import {
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
+import logger from "../utils/logger.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const userData = {
@@ -104,8 +105,13 @@ const getProfile = asyncHandler(async (req, res) => {
 
 const updateProfile = asyncHandler(async (req, res) => {
   const userId = req.user?.user_id;
-  console.log(userId, req.body);
-  
+  // sanitize body for logs (remove password fields if present)
+  const safeBody = { ...req.body } || {};
+  if (safeBody.password) safeBody.password = "[REDACTED]";
+  if (safeBody.currentPassword) safeBody.currentPassword = "[REDACTED]";
+  if (safeBody.newPassword) safeBody.newPassword = "[REDACTED]";
+  logger.debug({ userId, body: safeBody }, "updateProfile request");
+
   const updated = await updateProfileService(userId, req.body);
   return res.status(200).json(new ApiResponse(200, updated, "Profile updated successfully"));
 });
