@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import userRoutes from "./routes/user.routes.js";
+import categoryRoutes from "./routes/category.routes.js";
 import ApiResponse from "./utils/ApiResponse.js";
 import logger from "./utils/logger.js";
 import requestLogger from "./middlewares/requestLogger.js";
@@ -41,8 +42,9 @@ app.use(cookieParser());
 // Request logger (attach req.id and log basic request info)
 app.use(requestLogger);
 
-// Importing and using user routes
+// Importing and using routes
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/categories", categoryRoutes);
 
 // Global error handler (all failures)
 // This middleware handles errors that occur in the application

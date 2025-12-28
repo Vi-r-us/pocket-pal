@@ -1,6 +1,11 @@
 import { sequelize } from "../db/sequelize.js";
+import defineCategoryModel from "./category.model.js";
+import defineCategoryGroupModel from "./categoryGroup.model.js";
+import defineCurrencyModel from "./currency.model.js";
+import defineFXRateModel from "./fxRate.model.js";
 import defineLogModel from "./log.model.js";
 import defineUserModel from "./user.model.js";
+import defineUserHiddenCategoryModel from "./userHiddenCategory.model.js";
 
 // sequelize
 //   .sync()
@@ -16,9 +21,25 @@ import defineUserModel from "./user.model.js";
 const User = defineUserModel(sequelize);
 const Log = defineLogModel(sequelize);
 
+// const Currency = defineCurrencyModel(sequelize);
+// const FXRate = defineFXRateModel(sequelize);
+
+const Category = defineCategoryModel(sequelize);
+const CategoryGroup = defineCategoryGroupModel(sequelize);
+const UserHiddenCategory = defineUserHiddenCategoryModel(sequelize);
+
 // console.log('User model sequelize:', User === sequelize.models.User); // true
 // console.log('Sequelize models:', sequelize.models.User);
 
 // console.log('User model:', User); 
 
-export { User, Log };
+// Set up associations by calling the associate methods on each model
+// This must happen after all models are defined, so they can reference each other
+Object.keys(sequelize.models).forEach((modelName) => {
+  if (sequelize.models[modelName].associate) {
+    sequelize.models[modelName].associate(sequelize.models);
+  }
+});
+
+
+export { User, Log, Category, CategoryGroup, UserHiddenCategory };
