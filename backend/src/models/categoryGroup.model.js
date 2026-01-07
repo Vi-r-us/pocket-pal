@@ -31,8 +31,8 @@ const defineCategoryGroupModel = (sequelize) => {
   );
 
   CategoryGroup.associate = (models) => {
-    CategoryGroup.belongsTo(models.User, { foreignKey: "user_id" });
-    CategoryGroup.hasMany(models.Category, { foreignKey: "group_id" });
+    CategoryGroup.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
+    CategoryGroup.hasMany(models.Category, { foreignKey: "group_id", as: "categories" });
   };
 
   return CategoryGroup;

@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import userRoutes from "./routes/user.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
+import categoryGroupRoutes from "./routes/categoryGroup.routes.js";
 import ApiResponse from "./utils/ApiResponse.js";
 import logger from "./utils/logger.js";
 import requestLogger from "./middlewares/requestLogger.js";
@@ -45,6 +46,7 @@ app.use(requestLogger);
 // Importing and using routes
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/category-groups", categoryGroupRoutes);
 
 // Global error handler (all failures)
 // This middleware handles errors that occur in the application
