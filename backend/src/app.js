@@ -58,6 +58,7 @@ app.use((err, req, res, next) => {
   // Log errors with structured logger
   try {
     logger.error({ err, reqId: req.id, method: req.method, path: req.path, user: req.user?.public_id || req.user?.user_id || null }, "Error occurred");
+    process.stdout.write("\n");
   } catch (logErr) {
     // fall back to console if logger fails
     // eslint-disable-next-line no-console

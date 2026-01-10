@@ -4,6 +4,7 @@ import ApiError from "../utils/ApiError.js";
 import { Category, CategoryGroup } from "../models/index.js";
 import { Op, where } from "sequelize";
 import { createLog } from "./log.service.js";
+import getState from "../utils/logUtils.js";
 
 /**
  * Fetches category groups from the database based on userId and type.
@@ -161,6 +162,11 @@ const createCategoryGroup = async (userId, categoryGroupData) => {
  */
 const updateCategoryGroup = async (userId, categoryGroupId, updateData) => {
   logger.info(
+    {
+      userId,
+      categoryGroupId,
+      updateData,
+    },
     `updateCategoryGroup called with userId: ${userId}, categoryGroupId: ${categoryGroupId}, updateData: ${JSON.stringify(updateData)}`
   );
 
@@ -184,7 +190,11 @@ const updateCategoryGroup = async (userId, categoryGroupId, updateData) => {
       throw new ApiError(404, "Category group not found");
     }
 
+    const previousState = getState(existingCategoryGroup, updateData);
+
     const updatedCategoryGroup = await existingCategoryGroup.update(updateData);
+
+    const newState = getState(updatedCategoryGroup, updateData);
 
     logger.info(`Updated category group with ID: ${updatedCategoryGroup.group_id}\n`);
 
@@ -199,8 +209,8 @@ const updateCategoryGroup = async (userId, categoryGroupId, updateData) => {
       details: {
         source: "categoryGroup.service.updateCategoryGroup",
       },
-      old_value: existingCategoryGroup,
-      new_value: updatedCategoryGroup,
+      old_value: previousState,
+      new_value: newState,
       field_name: Object.keys(updateData).join(", "),
     });
 

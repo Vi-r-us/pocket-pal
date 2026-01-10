@@ -153,6 +153,8 @@ const registerUser = async ({ username, email, fullname, password, avatarFile, c
  * @throws {ApiError} - If the checks fail.
  */
 const loginUser = async ({ email, username, password }) => {
+  logger.info({ email, username }, "loginUser called");
+
   try {
     // Validate required fields (email or username and password)
     if ((!username && !email) || !password) {
@@ -246,6 +248,8 @@ const loginUser = async ({ email, username, password }) => {
  * @throws {ApiError} - If the user is not found or the logout process fails.
  */
 const logoutUser = async (userId) => {
+  logger.info({ userId }, "logoutUser called");
+
   try {
     // Find user by ID
     const user = await User.findByPk(userId);
@@ -287,6 +291,7 @@ const logoutUser = async (userId) => {
  * @throws {ApiError} - If the refresh token is invalid or if the user is not found.
  */
 const refreshTokens = async (incomingRefreshToken) => {
+  logger.info("refreshTokens called");
   try {
     // Verify the refresh token using the secret key
     const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
@@ -321,6 +326,8 @@ const refreshTokens = async (incomingRefreshToken) => {
  * @throws {ApiError} - 400 if userId is missing, 404 if user not found, 500 for DB errors.
  */
 const getProfile = async (userId) => {
+  logger.info({ userId }, "getProfile called");
+
   if (userId === undefined || userId === null || userId === "") {
     throw new ApiError(400, "User ID is required");
   }
@@ -353,6 +360,8 @@ const getProfile = async (userId) => {
  * @throws {ApiError} - If userId is missing, data is empty, user not found, or update fails.
  */
 const updateProfile = async (userId, data = {}) => {
+  logger.info({ userId, data }, "updateProfile called");
+
   if (userId === undefined || userId === null || userId === "") {
     throw new ApiError(400, "User ID is required");
   }
@@ -424,6 +433,8 @@ const updateProfile = async (userId, data = {}) => {
  * @throws {ApiError} - If userId is missing, avatarFile is not provided, user not found, or update fails.
  */
 const updateAvatar = async (userId, avatarFile) => {
+  logger.info({ userId, avatarFile }, "updateAvatar called");
+
   if (userId === undefined || userId === null || userId === "") {
     throw new ApiError(400, "User ID is required");
   }
@@ -483,6 +494,8 @@ const updateAvatar = async (userId, avatarFile) => {
  * @throws {ApiError} - If userId is missing, coverFile is not provided, user not found, or update fails.
  */
 const updateCoverImage = async (userId, coverFile) => {
+  logger.info({ userId, coverFile }, "updateCoverImage called");
+
   if (userId === undefined || userId === null || userId === "") {
     throw new ApiError(400, "User ID is required");
   }
@@ -543,6 +556,8 @@ const updateCoverImage = async (userId, coverFile) => {
  * @throws {ApiError} - If passwords are missing, new password is invalid, current password is incorrect, user not found, or update fails.
  */
 const updatePassword = async (userId, currentPassword, newPassword) => {
+  logger.info({ userId }, "updatePassword called");
+  
   if (!currentPassword || !newPassword) throw new ApiError(400, "Both current and new passwords are required");
   if (currentPassword.trim() === newPassword.trim())
     throw new ApiError(400, "New password must be different from current password");
