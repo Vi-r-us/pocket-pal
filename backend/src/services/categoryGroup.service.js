@@ -2,7 +2,7 @@ import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
 import { Category, CategoryGroup } from "../models/index.js";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import { createLog } from "./log.service.js";
 import getState from "../utils/logUtils.js";
 
@@ -21,10 +21,10 @@ const fetchCategoryGroups = async (userId, type) => {
     throw new ApiError(400, "User ID is required");
   }
 
-  // Logic to fetch category groups from the database based on userId and type
   try {
+    // Include both system groups (user_id null) and this user's own groups
     const whereClause = { [Op.or]: [{ user_id: null }, { user_id: userId }] };
-    if (type) {
+    if (type !== undefined && type !== null && type !== "") {
       whereClause.type = type;
     }
     const categoryGroups = await CategoryGroup.findAll({
@@ -68,6 +68,7 @@ const fetchCategoryGroup = async (userId, categoryGroupId) => {
   }
 
   try {
+    // Same access rule as list: system group or user's own group; include only categories user can see
     const categoryGroup = await CategoryGroup.findOne({
       where: {
         group_id: categoryGroupId,
@@ -111,6 +112,7 @@ const createCategoryGroup = async (userId, categoryGroupData) => {
   }
 
   try {
+    // Duplicate check: same name + type per user (system groups are separate)
     const existingCategoryGroup = await CategoryGroup.findOne({
       where: {
         name: categoryGroupData.name,
@@ -130,7 +132,6 @@ const createCategoryGroup = async (userId, categoryGroupData) => {
 
     logger.info(`Created new category group with ID: ${newCategoryGroup.group_id}\n`);
 
-    // Log the creation
     await createLog({
       user_id: userId,
       log_type: "audit",
@@ -179,15 +180,21 @@ const updateCategoryGroup = async (userId, categoryGroupId, updateData) => {
   }
 
   try {
+    // Find group if it's either system (user_id null) or owned by this user
     const existingCategoryGroup = await CategoryGroup.findOne({
       where: {
         group_id: categoryGroupId,
-        user_id: userId,
+        [Op.or]: [{ user_id: null }, { user_id: userId }],
       },
     });
 
     if (!existingCategoryGroup) {
       throw new ApiError(404, "Category group not found");
+    }
+
+    // Only user-owned groups are editable; system groups are read-only
+    if (existingCategoryGroup.user_id === null) {
+      throw new ApiError(403, "System category groups cannot be modified");
     }
 
     const previousState = getState(existingCategoryGroup, updateData);
@@ -198,7 +205,6 @@ const updateCategoryGroup = async (userId, categoryGroupId, updateData) => {
 
     logger.info(`Updated category group with ID: ${updatedCategoryGroup.group_id}\n`);
 
-    // Log the update
     await createLog({
       user_id: userId,
       log_type: "audit",
@@ -241,15 +247,14 @@ const deleteCategoryGroup = async (userId, categoryGroupId) => {
 
   try {
     const existingCategoryGroup = await CategoryGroup.findOne({
-      where: {
-        group_id: categoryGroupId,
-      },
+      where: { group_id: categoryGroupId },
     });
 
     if (!existingCategoryGroup) {
       throw new ApiError(404, "Category group not found");
     }
 
+    // Only the owner can delete; system groups (user_id null) are not deletable
     if (existingCategoryGroup.user_id !== userId) {
       throw new ApiError(403, "You do not have permission to delete this category group");
     }
@@ -258,7 +263,6 @@ const deleteCategoryGroup = async (userId, categoryGroupId) => {
 
     logger.info(`Deleted category group with ID: ${categoryGroupId}\n`);
 
-    // Log the deletion
     await createLog({
       user_id: userId,
       log_type: "audit",
