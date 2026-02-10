@@ -4,32 +4,42 @@ import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
 import { Category, CategoryGroup, UserHiddenCategory } from "../models/index.js";
 import { capitalizeTitleCase } from "../utils/sanitize.js";
+import { createLog } from "./log.service.js";
 
-const fetchCategories = async (userId, type) => {
-  logger.info(`fetchCategories called with userId: ${userId}, type: ${type}`);
+/**
+ * Fetches categories for a user: system categories (user_id null) plus the user's own, active only.
+ * Optionally filtered by type, groupId. Excludes hidden categories unless includeHidden is true.
+ * @param {number} userId
+ * @param {Object} params - { type?, groupId?, includeHidden? }
+ */
+const fetchCategories = async (userId, params = {}) => {
+  const { type, groupId, includeHidden } = params || {};
+  logger.info({ userId, type, groupId, includeHidden }, "fetchCategories called");
 
   if (userId === undefined || userId === null || userId === "") {
     throw new ApiError(400, "User ID is required");
   }
 
-  // Logic to fetch categories from the database based on userId and type
   try {
-    const hiddenCategories = await UserHiddenCategory.findAll({
-      where: { user_id: userId },
-    });
-    const hiddenCategoryIds = hiddenCategories.map((cat) => cat.categoryId);
+    let hiddenCategoryIds = [];
+    if (!includeHidden) {
+      const hiddenCategories = await UserHiddenCategory.findAll({
+        where: { user_id: userId },
+      });
+      hiddenCategoryIds = hiddenCategories.map((cat) => cat.category_id);
+    }
 
-    // Construct the where clause
     const whereClause = { is_active: true, [Op.or]: [{ user_id: null }, { user_id: userId }] };
-    // Add type and hiddenCategoryIds to the where clause
     if (type) {
       whereClause.type = type;
     }
+    if (groupId !== undefined && groupId !== null) {
+      whereClause.group_id = groupId;
+    }
     if (hiddenCategoryIds.length > 0) {
-      whereClause.id = { [Op.notIn]: hiddenCategoryIds };
+      whereClause.category_id = { [Op.notIn]: hiddenCategoryIds };
     }
 
-    // Simulated database fetch operation
     const categories = await Category.findAll({
       where: whereClause,
       include: [{ model: CategoryGroup, as: "group" }],
@@ -40,20 +50,52 @@ const fetchCategories = async (userId, type) => {
     });
 
     if (!categories) {
-      logger.warn(`No categories found for user: ${userId} with type: ${type}`);
+      logger.warn({ userId, type }, "No categories found");
       return [];
     }
 
-    logger.info(`Fetched ${categories.length} categories for user: ${userId} with type: ${type}`);
-
+    logger.info({ userId, count: categories.length }, "Fetched categories");
     return categories;
   } catch (error) {
-    handleServerError(error, "Error fetching categories", 500);
+    throw handleServerError(error, "Error fetching categories", 500);
+  }
+};
+
+/**
+ * Fetches a single category by id (system or user's own). Does not filter by hidden.
+ */
+const fetchCategory = async (userId, categoryId) => {
+  logger.info({ userId, categoryId }, "fetchCategory called");
+
+  if (userId === undefined || userId === null || userId === "") {
+    throw new ApiError(400, "User ID is required");
+  }
+  if (categoryId === undefined || categoryId === null || categoryId === "") {
+    throw new ApiError(400, "Category ID is required");
+  }
+
+  try {
+    const category = await Category.findOne({
+      where: {
+        category_id: categoryId,
+        [Op.or]: [{ user_id: null }, { user_id: userId }],
+      },
+      include: [{ model: CategoryGroup, as: "group" }],
+    });
+
+    if (!category) {
+      throw new ApiError(404, "Category not found");
+    }
+
+    return category;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw handleServerError(error, "Error fetching category", 500);
   }
 };
 
 const createCategory = async (userId, categoryData) => {
-  logger.info(`createCategory called with userId: ${userId}, and categoryData: ${JSON.stringify(categoryData)}`);
+  logger.info({ userId, categoryData }, "createCategory called");
 
   try {
     if (!userId) {
@@ -68,7 +110,6 @@ const createCategory = async (userId, categoryData) => {
     name = capitalizeTitleCase(name);
     type = type.toLowerCase();
 
-    // Check for duplicate category
     const existingCategory = await Category.findOne({
       where: {
         name,
@@ -80,9 +121,7 @@ const createCategory = async (userId, categoryData) => {
       throw new ApiError(400, "Category with the same name and type already exists");
     }
 
-    // Check if group exists
     if (groupId) {
-      // must be system group or user’s own group, and same type
       const group = await CategoryGroup.findOne({
         where: {
           group_id: groupId,
@@ -95,32 +134,30 @@ const createCategory = async (userId, categoryData) => {
       }
     }
 
-    // Logic to create a new category in the database
     const newCategory = await Category.create({
       name,
       type,
       group_id: groupId || null,
-      isSystem: false,
+      is_system: false,
       is_active: true,
       user_id: userId,
     });
 
-    logger.info(`Category created successfully for user: ${userId}`);
-
+    logger.info({ userId, categoryId: newCategory.category_id }, "Category created");
     return newCategory;
   } catch (error) {
-    handleServerError(error, "Error creating category", 500);
+    if (error instanceof ApiError) throw error;
+    throw handleServerError(error, "Error creating category", 500);
   }
 };
 
 const updateCategory = async (userId, categoryId, updateData) => {
-  logger.info(`updateCategory called with userId: ${userId}, categoryId: ${categoryId}, and updateData: ${JSON.stringify(updateData)}`);
+  logger.info({ userId, categoryId, updateData }, "updateCategory called");
 
   try {
     if (!userId) {
       throw new ApiError(400, "User ID is required to update a category");
     }
-
     if (!categoryId) {
       throw new ApiError(400, "Category ID is required to update a category");
     }
@@ -129,34 +166,26 @@ const updateCategory = async (userId, categoryId, updateData) => {
     if (!category) {
       throw new ApiError(404, "Category not found");
     }
-
     if (category.is_system) {
       throw new ApiError(403, "System categories cannot be modified");
     }
-
     if (category.user_id !== userId) {
       throw new ApiError(403, "You do not have permission to update this category");
     }
 
-    // If name is being updated, sanitize it
-    if (updateData.name) {
-      updateData.name = capitalizeTitleCase(updateData.name);
-      category.name = updateData.name;
+    if (updateData.name !== undefined) {
+      category.name = capitalizeTitleCase(updateData.name);
     }
-
-    // If type is being updated, ensure it's valid
-    if (updateData.type) {
-      updateData.type = updateData.type.toLowerCase();
-      category.type = updateData.type;
+    if (updateData.type !== undefined) {
+      category.type = updateData.type.toLowerCase();
     }
-
-    // If groupId is being updated, validate it
+    if (updateData.is_active !== undefined) {
+      category.is_active = Boolean(updateData.is_active);
+    }
     if (updateData.groupId !== undefined) {
       if (updateData.groupId === null) {
-        // Allow removing the category from a group
         category.group_id = null;
       } else {
-        // must be system group or user’s own group, and same type
         const group = await CategoryGroup.findOne({
           where: {
             group_id: updateData.groupId,
@@ -172,13 +201,133 @@ const updateCategory = async (userId, categoryId, updateData) => {
     }
 
     const updatedCategory = await category.save();
-    logger.info(`Category updated successfully for user: ${userId}`);
+    logger.info({ userId, categoryId }, "Category updated");
     return updatedCategory;
-  } catch (error) { 
-    handleServerError(error, "Error updating category", 500);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw handleServerError(error, "Error updating category", 500);
   }
 };
 
+/**
+ * Deletes a user-owned category. Fails with 409 if category is in use by any transaction (suggest disable instead).
+ */
+const deleteCategory = async (userId, categoryId) => {
+  logger.info({ userId, categoryId }, "deleteCategory called");
 
+  if (!userId) {
+    throw new ApiError(400, "User ID is required");
+  }
+  if (categoryId === undefined || categoryId === null || categoryId === "") {
+    throw new ApiError(400, "Category ID is required");
+  }
 
-export { fetchCategories, createCategory, updateCategory };
+  try {
+    const category = await Category.findByPk(categoryId);
+    if (!category) {
+      throw new ApiError(404, "Category not found");
+    }
+    if (category.user_id !== userId) {
+      throw new ApiError(403, "You do not have permission to delete this category");
+    }
+    if (category.is_system) {
+      throw new ApiError(403, "System categories cannot be deleted");
+    }
+
+    // TODO: Add transaction usage check
+    // const usageCount = await Transaction.count({
+    //   where: { category_id: categoryId },
+    // });
+    // if (usageCount > 0) {
+    //   throw new ApiError(
+    //     409,
+    //     "Category is in use by transactions. Disable it instead by setting is_active to false."
+    //   );
+    // }
+
+    await category.destroy();
+    logger.info({ userId, categoryId }, "Category deleted");
+
+    await createLog({
+      user_id: userId,
+      log_type: "audit",
+      action: "delete",
+      entity: "category",
+      entity_id: categoryId,
+      message: "Category deleted",
+      details: { source: "category.service.deleteCategory" },
+      old_value: category.get({ plain: true }),
+      new_value: null,
+    });
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw handleServerError(error, "Error deleting category", 500);
+  }
+};
+
+/**
+ * Hides a system category for the current user. Only system categories can be hidden.
+ */
+const hideCategory = async (userId, categoryId) => {
+  logger.info({ userId, categoryId }, "hideCategory called");
+
+  if (!userId) {
+    throw new ApiError(400, "User ID is required");
+  }
+  if (categoryId === undefined || categoryId === null || categoryId === "") {
+    throw new ApiError(400, "Category ID is required");
+  }
+
+  try {
+    const category = await Category.findByPk(categoryId);
+    if (!category) {
+      throw new ApiError(404, "Category not found");
+    }
+    if (category.user_id !== null) {
+      throw new ApiError(403, "Only system categories can be hidden");
+    }
+
+    const [record] = await UserHiddenCategory.findOrCreate({
+      where: { user_id: userId, category_id: categoryId },
+      defaults: { user_id: userId, category_id: categoryId },
+    });
+    logger.info({ userId, categoryId }, "Category hidden");
+    return record;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw handleServerError(error, "Error hiding category", 500);
+  }
+};
+
+/**
+ * Unhides a category for the current user. Idempotent.
+ */
+const unhideCategory = async (userId, categoryId) => {
+  logger.info({ userId, categoryId }, "unhideCategory called");
+
+  if (!userId) {
+    throw new ApiError(400, "User ID is required");
+  }
+  if (categoryId === undefined || categoryId === null || categoryId === "") {
+    throw new ApiError(400, "Category ID is required");
+  }
+
+  try {
+    await UserHiddenCategory.destroy({
+      where: { user_id: userId, category_id: categoryId },
+    });
+    logger.info({ userId, categoryId }, "Category unhidden");
+  } catch (error) {
+    throw handleServerError(error, "Error unhiding category", 500);
+  }
+};
+
+export {
+  fetchCategories,
+  fetchCategory,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  hideCategory,
+  unhideCategory,
+};

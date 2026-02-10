@@ -1,13 +1,24 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { createCategory, getCategories, updateCategory } from "../controllers/category.controller.js";
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  hideCategory,
+  unhideCategory,
+} from "../controllers/category.controller.js";
 
 const router = Router();
 
-// Category Routes
-router.get("/", verifyJWT, getCategories);
-router.post("/", verifyJWT, createCategory);
+// Hide/unhide must be before "/" so /hide is matched
+router.route("/hide").post(verifyJWT, hideCategory).delete(verifyJWT, unhideCategory);
 
-router.patch("/", verifyJWT, updateCategory);
+router
+  .route("/")
+  .get(verifyJWT, getCategories)
+  .post(verifyJWT, createCategory)
+  .patch(verifyJWT, updateCategory)
+  .delete(verifyJWT, deleteCategory);
 
 export default router;

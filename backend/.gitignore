@@ -117,4 +117,20 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+
+# Cursor files
+.cursor/
+.cursorrules
+.cursorrules.md
+.cursorrules.txt
+.cursorrules.yml
+.cursorrules.yaml
+.cursorrules.json
+.cursorrules.jsonc
+.cursorrules.json5
+.cursorrules.jsonp
+.cursorrules.jsonp
+.AGENTS.md
+
+
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
