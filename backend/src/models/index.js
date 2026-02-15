@@ -24,12 +24,12 @@ const User = defineUserModel(sequelize);
 const Log = defineLogModel(sequelize);
 
 const Currency = defineCurrencyModel(sequelize);
-// const FXRate = defineFXRateModel(sequelize);
+const FXRate = defineFXRateModel(sequelize);
 
 const Account = defineAccountModel(sequelize);
 const Category = defineCategoryModel(sequelize);
 const CategoryGroup = defineCategoryGroupModel(sequelize);
-// const Transaction = defineTransactionModel(sequelize);
+const Transaction = defineTransactionModel(sequelize);
 const UserHiddenCategory = defineUserHiddenCategoryModel(sequelize);
 
 // console.log('User model sequelize:', User === sequelize.models.User); // true
@@ -46,4 +46,4 @@ Object.keys(sequelize.models).forEach((modelName) => {
 });
 
 
-export { User, Log, Currency, Account, Category, CategoryGroup, UserHiddenCategory };
+export { User, Log, Currency, FXRate, Account, Category, CategoryGroup, Transaction, UserHiddenCategory };

@@ -46,7 +46,7 @@ const defineAccountModel = (sequelize) => {
   Account.associate = (models) => {
     Account.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
     Account.belongsTo(models.Currency, { foreignKey: "currency_code", as: "currency" });
-    // Account.hasMany(models.Transaction, { foreignKey: "account_id", as: "transactions" });
+    Account.hasMany(models.Transaction, { foreignKey: "account_id", as: "transactions" });
   };
 
   return Account;

@@ -5,6 +5,7 @@ import accountRoutes from "./routes/account.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import categoryGroupRoutes from "./routes/categoryGroup.routes.js";
+import transactionRoutes from "./routes/transaction.routes.js";
 import ApiResponse from "./utils/ApiResponse.js";
 import logger from "./utils/logger.js";
 import requestLogger from "./middlewares/requestLogger.js";
@@ -49,6 +50,7 @@ app.use("/api/v1/accounts", accountRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/category-groups", categoryGroupRoutes);
+app.use("/api/v1/transactions", transactionRoutes);
 
 // Global error handler (all failures)
 // This middleware handles errors that occur in the application
