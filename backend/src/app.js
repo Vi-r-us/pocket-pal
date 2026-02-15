@@ -1,6 +1,7 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import accountRoutes from "./routes/account.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import categoryGroupRoutes from "./routes/categoryGroup.routes.js";
@@ -44,6 +45,7 @@ app.use(cookieParser());
 app.use(requestLogger);
 
 // Importing and using routes
+app.use("/api/v1/accounts", accountRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/category-groups", categoryGroupRoutes);

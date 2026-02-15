@@ -23,10 +23,10 @@ import defineUserHiddenCategoryModel from "./userHiddenCategory.model.js";
 const User = defineUserModel(sequelize);
 const Log = defineLogModel(sequelize);
 
-// const Currency = defineCurrencyModel(sequelize);
+const Currency = defineCurrencyModel(sequelize);
 // const FXRate = defineFXRateModel(sequelize);
 
-// const Account = defineAccountModel(sequelize);
+const Account = defineAccountModel(sequelize);
 const Category = defineCategoryModel(sequelize);
 const CategoryGroup = defineCategoryGroupModel(sequelize);
 // const Transaction = defineTransactionModel(sequelize);
@@ -46,4 +46,4 @@ Object.keys(sequelize.models).forEach((modelName) => {
 });
 
 
-export { User, Log, Category, CategoryGroup, UserHiddenCategory };
+export { User, Log, Currency, Account, Category, CategoryGroup, UserHiddenCategory };
