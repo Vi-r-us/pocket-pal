@@ -111,7 +111,7 @@ const categoryInclude = { model: Category, as: "category", attributes: ["categor
  * List transactions for the user with optional filters. Order by timestamp DESC.
  */
 async function fetchTransactions(userId, params = {}) {
-  const { account_id, category_id, type, date_from, date_to } = params || {};
+  const { account_id, category_id, type, source, date_from, date_to } = params || {};
   logger.info({ userId, params }, "fetchTransactions called");
 
   if (userId === undefined || userId === null || userId === "") {
@@ -123,11 +123,23 @@ async function fetchTransactions(userId, params = {}) {
     if (account_id != null) where.account_id = account_id;
     if (category_id != null) where.category_id = category_id;
     if (type != null && type !== "") where.type = type;
+    if (source != null && source !== "") where.source = source;
+
     if (date_from != null || date_to != null) {
       where.timestamp = {};
-      if (date_from != null) where.timestamp[Op.gte] = new Date(date_from);
-      if (date_to != null) where.timestamp[Op.lte] = new Date(date_to);
+      if (date_from != null) {
+        const startOfDay = new Date(date_from);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        where.timestamp[Op.gte] = startOfDay.toISOString().replace("Z", "").replace("T", " ");
+      }
+      if (date_to != null) {
+        const endOfDay = new Date(date_to);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+        where.timestamp[Op.lte] = endOfDay.toISOString().replace("Z", "").replace("T", " ");
+      }
     }
+
+    console.log("where", where);
 
     const transactions = await Transaction.findAll({
       where,

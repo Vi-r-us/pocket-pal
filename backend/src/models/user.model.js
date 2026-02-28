@@ -101,6 +101,11 @@ const defineUserModel = (sequelize) => {
         },
       },
       refreshToken: DataTypes.STRING(255),
+      base_currency: {
+        type: DataTypes.STRING(3),
+        allowNull: true,
+        references: { model: "currencies", key: "code" },
+      },
     },
     {
       sequelize,

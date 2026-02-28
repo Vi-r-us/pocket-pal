@@ -57,6 +57,14 @@ const fetchTransactionsSchema = Joi.object({
     .messages({
       "any.only": `Type must be one of: ${VALID_TRANSACTION_TYPES.join(", ")}`,
     }),
+  source: Joi.string()
+    .lowercase()
+    .trim()
+    .valid(...VALID_TRANSACTION_SOURCES)
+    .optional()
+    .messages({
+      "any.only": `Source must be one of: ${VALID_TRANSACTION_SOURCES.join(", ")}`,
+    }),
   date_from: Joi.date().optional().messages({
     "date.base": "date_from must be a valid date",
   }),

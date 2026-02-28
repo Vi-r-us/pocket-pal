@@ -14,7 +14,7 @@ router
   .route("/")
   .get(verifyJWT, getTransactions)
   .post(verifyJWT, upload.none(), createTransaction)
-  .patch(verifyJWT, updateTransaction)
+  .patch(verifyJWT, upload.none(), updateTransaction)
   .delete(verifyJWT, deleteTransaction);
 
 export default router;
