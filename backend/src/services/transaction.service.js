@@ -4,6 +4,7 @@ import ApiError from "../utils/ApiError.js";
 import { Op } from "sequelize";
 import { Account, Category, Currency, FXRate, Transaction, User } from "../models/index.js";
 import { getOrFetchRate } from "./fx.service.js";
+import { sanitizeDate } from "../utils/sanitize.js";
 
 /**
  * Resolve base currency for a user: user.base_currency if set and valid, else account.currency_code.
@@ -130,12 +131,12 @@ async function fetchTransactions(userId, params = {}) {
       if (date_from != null) {
         const startOfDay = new Date(date_from);
         startOfDay.setUTCHours(0, 0, 0, 0);
-        where.timestamp[Op.gte] = startOfDay.toISOString().replace("Z", "").replace("T", " ");
+        where.timestamp[Op.gte] = sanitizeDate(startOfDay);
       }
       if (date_to != null) {
         const endOfDay = new Date(date_to);
         endOfDay.setUTCHours(23, 59, 59, 999);
-        where.timestamp[Op.lte] = endOfDay.toISOString().replace("Z", "").replace("T", " ");
+        where.timestamp[Op.lte] = sanitizeDate(endOfDay);
       }
     }
 

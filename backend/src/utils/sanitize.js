@@ -8,4 +8,14 @@ const capitalizeTitleCase = (str) => {
   return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 };
 
-export { capitalizeTitleCase };
+/**
+ * Sanitizes a date to a valid date string format YYYY-MM-DD HH:MM:SS.
+ * @param {Date} date - The date object to sanitize.
+ * @returns {string} The sanitized date string.
+ */
+const sanitizeDate = (date) => {
+  if (!date || !(date instanceof Date)) return date;
+  return date.toISOString().replace("Z", "").replace("T", " ");
+};
+
+export { capitalizeTitleCase, sanitizeDate };
