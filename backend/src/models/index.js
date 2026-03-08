@@ -8,6 +8,9 @@ import defineLogModel from "./log.model.js";
 import defineUserModel from "./user.model.js";
 import defineTransactionModel from "./transaction.model.js";
 import defineUserHiddenCategoryModel from "./userHiddenCategory.model.js";
+import defineBudgetPeriodModel from "./budgetPeriod.model.js";
+import defineBudgetModel from "./budget.model.js";
+import defineGoalModel from "./goal.model.js";
 
 // sequelize
 //   .sync()
@@ -31,6 +34,9 @@ const Category = defineCategoryModel(sequelize);
 const CategoryGroup = defineCategoryGroupModel(sequelize);
 const Transaction = defineTransactionModel(sequelize);
 const UserHiddenCategory = defineUserHiddenCategoryModel(sequelize);
+const BudgetPeriod = defineBudgetPeriodModel(sequelize);
+const Budget = defineBudgetModel(sequelize);
+const Goal = defineGoalModel(sequelize);
 
 // console.log('User model sequelize:', User === sequelize.models.User); // true
 // console.log('Sequelize models:', sequelize.models.User);
@@ -46,4 +52,4 @@ Object.keys(sequelize.models).forEach((modelName) => {
 });
 
 
-export { User, Log, Currency, FXRate, Account, Category, CategoryGroup, Transaction, UserHiddenCategory };
+export { User, Log, Currency, FXRate, Account, Category, CategoryGroup, Transaction, UserHiddenCategory, BudgetPeriod, Budget, Goal };
