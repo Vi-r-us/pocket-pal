@@ -17,25 +17,12 @@ import {
 
 /**
  * GET /category-groups
- * - With query.id: returns a single category group (and its categories) by id.
- * - Without id: returns all category groups for the user, optionally filtered by body.type (expense|income|savings).
+ * Returns all category groups for the user. Optional query filter: type (expense|income|savings).
  */
-const getCategoriesGroup = asyncHandler(async (req, res) => {
+const getCategoryGroups = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
-  const categoryGroupId = req.query.id;
 
-  if (categoryGroupId !== undefined && categoryGroupId !== "") {
-    const { error, value } = validateCategoryGroupIdQuery({ id: req.query.id });
-    if (error) {
-      const errorMessages = error.details.map((d) => d.message).join(", ");
-      throw new ApiError(400, `Validation error: ${errorMessages}`);
-    }
-    const categoryGroup = await fetchCategoryGroupService(userId, value.id);
-    return res.status(200).json(new ApiResponse(200, categoryGroup, "Category group fetched successfully"));
-  }
-
-  // Validate body parameters (type is optional filter for GET)
-  const { error, value } = validateFetchCategoryGroups(req.body);
+  const { error, value } = validateFetchCategoryGroups(req.query);
   if (error) {
     const errorMessages = error.details.map((d) => d.message).join(", ");
     throw new ApiError(400, `Validation error: ${errorMessages}`);
@@ -46,10 +33,27 @@ const getCategoriesGroup = asyncHandler(async (req, res) => {
 });
 
 /**
+ * GET /category-groups/:id
+ * Returns a single category group (and its categories) by id.
+ */
+const getCategoryGroup = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+
+  const { error, value } = validateCategoryGroupIdQuery({ id: req.params.id });
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+
+  const categoryGroup = await fetchCategoryGroupService(userId, value.id);
+  return res.status(200).json(new ApiResponse(200, categoryGroup, "Category group fetched successfully"));
+});
+
+/**
  * POST /category-groups
  * Creates a new category group. Body: { name, type } (type: expense|income|savings).
  */
-const createCategoriesGroup = asyncHandler(async (req, res) => {
+const createCategoryGroup = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
 
   const { error, value } = validateCreateCategoryGroup(req.body);
@@ -63,18 +67,18 @@ const createCategoriesGroup = asyncHandler(async (req, res) => {
 });
 
 /**
- * PATCH /category-groups?id=<group_id>
+ * PATCH /category-groups/:id
  * Updates a user-owned category group. Body: { name?, type? } (at least one required). System groups cannot be updated.
  */
-const updateCategoriesGroup = asyncHandler(async (req, res) => {
+const updateCategoryGroup = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
 
-  const queryValidation = validateCategoryGroupIdQuery({ id: req.query.id });
-  if (queryValidation.error) {
-    const errorMessages = queryValidation.error.details.map((d) => d.message).join(", ");
+  const paramValidation = validateCategoryGroupIdQuery({ id: req.params.id });
+  if (paramValidation.error) {
+    const errorMessages = paramValidation.error.details.map((d) => d.message).join(", ");
     throw new ApiError(400, `Validation error: ${errorMessages}`);
   }
-  const categoryGroupId = queryValidation.value.id;
+  const categoryGroupId = paramValidation.value.id;
 
   const { error, value } = validateUpdateCategoryGroup(req.body);
   if (error) {
@@ -87,13 +91,13 @@ const updateCategoriesGroup = asyncHandler(async (req, res) => {
 });
 
 /**
- * DELETE /category-groups?id=<group_id>
+ * DELETE /category-groups/:id
  * Deletes a category group. Only the owner (user_id) can delete; system groups (user_id null) cannot be deleted.
  */
-const deleteCategoriesGroup = asyncHandler(async (req, res) => {
+const deleteCategoryGroup = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
 
-  const { error, value } = validateCategoryGroupIdQuery({ id: req.query.id });
+  const { error, value } = validateCategoryGroupIdQuery({ id: req.params.id });
   if (error) {
     const errorMessages = error.details.map((d) => d.message).join(", ");
     throw new ApiError(400, `Validation error: ${errorMessages}`);
@@ -103,4 +107,4 @@ const deleteCategoriesGroup = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, null, "Category group deleted successfully"));
 });
 
-export { getCategoriesGroup, createCategoriesGroup, updateCategoriesGroup, deleteCategoriesGroup };
+export { getCategoryGroups, getCategoryGroup, createCategoryGroup, updateCategoryGroup, deleteCategoryGroup };

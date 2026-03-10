@@ -17,22 +17,10 @@ import {
 
 /**
  * GET /accounts
- * - With query.id: returns a single account by id (must belong to user).
- * - Without id: returns all accounts for the user, optionally filtered by query (type, is_active).
+ * Returns all accounts for the user. Optional query filters: type, is_active.
  */
 const getAccounts = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
-  const accountId = req.query.id;
-
-  if (accountId !== undefined && accountId !== "") {
-    const queryValidation = validateAccountIdQuery({ id: req.query.id });
-    if (queryValidation.error) {
-      const errorMessages = queryValidation.error.details.map((d) => d.message).join(", ");
-      throw new ApiError(400, `Validation error: ${errorMessages}`);
-    }
-    const account = await fetchAccountService(userId, queryValidation.value.id);
-    return res.status(200).json(new ApiResponse(200, account, "Account fetched successfully"));
-  }
 
   const { error, value } = validateFetchAccounts(req.query);
   if (error) {
@@ -42,6 +30,23 @@ const getAccounts = asyncHandler(async (req, res) => {
 
   const accounts = await fetchAccountsService(userId, value);
   return res.status(200).json(new ApiResponse(200, accounts, "Accounts fetched successfully"));
+});
+
+/**
+ * GET /accounts/:id
+ * Returns a single account by id (must belong to user).
+ */
+const getAccount = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+
+  const { error, value } = validateAccountIdQuery({ id: req.params.id });
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+
+  const account = await fetchAccountService(userId, value.id);
+  return res.status(200).json(new ApiResponse(200, account, "Account fetched successfully"));
 });
 
 /**
@@ -62,18 +67,18 @@ const createAccount = asyncHandler(async (req, res) => {
 });
 
 /**
- * PATCH /accounts?id=<account_id>
+ * PATCH /accounts/:id
  * Updates a user-owned account. Body: { name?, type?, currency_code?, is_active? } (at least one required).
  */
 const updateAccount = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
 
-  const queryValidation = validateAccountIdQuery({ id: req.query.id });
-  if (queryValidation.error) {
-    const errorMessages = queryValidation.error.details.map((d) => d.message).join(", ");
+  const paramValidation = validateAccountIdQuery({ id: req.params.id });
+  if (paramValidation.error) {
+    const errorMessages = paramValidation.error.details.map((d) => d.message).join(", ");
     throw new ApiError(400, `Validation error: ${errorMessages}`);
   }
-  const accountId = queryValidation.value.id;
+  const accountId = paramValidation.value.id;
 
   const { error, value } = validateUpdateAccount(req.body);
   if (error) {
@@ -86,13 +91,13 @@ const updateAccount = asyncHandler(async (req, res) => {
 });
 
 /**
- * DELETE /accounts?id=<account_id>
+ * DELETE /accounts/:id
  * Deletes an account. Only allowed when account has no transactions; otherwise 409 (suggest deactivate).
  */
 const deleteAccount = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
 
-  const { error, value } = validateAccountIdQuery({ id: req.query.id });
+  const { error, value } = validateAccountIdQuery({ id: req.params.id });
   if (error) {
     const errorMessages = error.details.map((d) => d.message).join(", ");
     throw new ApiError(400, `Validation error: ${errorMessages}`);
@@ -102,4 +107,4 @@ const deleteAccount = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, null, "Account deleted successfully"));
 });
 
-export { getAccounts, createAccount, updateAccount, deleteAccount };
+export { getAccounts, getAccount, createAccount, updateAccount, deleteAccount };

@@ -17,22 +17,10 @@ import {
 
 /**
  * GET /transactions
- * - With query.id: returns a single transaction by id (must belong to user).
- * - Without id: returns list of user's transactions (optional filters: account_id, category_id, type, date_from, date_to).
+ * Returns list of user's transactions. Optional query filters: account_id, category_id, type, date_from, date_to.
  */
 const getTransactions = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
-  const transactionId = req.query.id;
-
-  if (transactionId !== undefined && transactionId !== "") {
-    const queryValidation = validateTransactionIdQuery({ id: req.query.id });
-    if (queryValidation.error) {
-      const errorMessages = queryValidation.error.details.map((d) => d.message).join(", ");
-      throw new ApiError(400, `Validation error: ${errorMessages}`);
-    }
-    const transaction = await fetchTransactionService(userId, queryValidation.value.id);
-    return res.status(200).json(new ApiResponse(200, transaction, "Transaction fetched successfully"));
-  }
 
   const { error, value } = validateFetchTransactions(req.query);
   if (error) {
@@ -42,6 +30,23 @@ const getTransactions = asyncHandler(async (req, res) => {
 
   const transactions = await fetchTransactionsService(userId, value);
   return res.status(200).json(new ApiResponse(200, transactions, "Transactions fetched successfully"));
+});
+
+/**
+ * GET /transactions/:id
+ * Returns a single transaction by id (must belong to user).
+ */
+const getTransaction = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+
+  const { error, value } = validateTransactionIdQuery({ id: req.params.id });
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+
+  const transaction = await fetchTransactionService(userId, value.id);
+  return res.status(200).json(new ApiResponse(200, transaction, "Transaction fetched successfully"));
 });
 
 /**
@@ -72,18 +77,18 @@ const createTransaction = asyncHandler(async (req, res) => {
 });
 
 /**
- * PATCH /transactions?id=<transaction_id>
+ * PATCH /transactions/:id
  * Update transaction (description, metadata, source, category_id, timestamp only). Only owner can update.
  */
 const updateTransaction = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
 
-  const queryValidation = validateTransactionIdQuery({ id: req.query.id });
-  if (queryValidation.error) {
-    const errorMessages = queryValidation.error.details.map((d) => d.message).join(", ");
+  const paramValidation = validateTransactionIdQuery({ id: req.params.id });
+  if (paramValidation.error) {
+    const errorMessages = paramValidation.error.details.map((d) => d.message).join(", ");
     throw new ApiError(400, `Validation error: ${errorMessages}`);
   }
-  const transactionId = queryValidation.value.id;
+  const transactionId = paramValidation.value.id;
 
   if (
     req.body == null ||
@@ -105,13 +110,13 @@ const updateTransaction = asyncHandler(async (req, res) => {
 });
 
 /**
- * DELETE /transactions?id=<transaction_id>
+ * DELETE /transactions/:id
  * Soft-delete transaction and reverse account balance. Only owner can delete.
  */
 const deleteTransaction = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
 
-  const { error, value } = validateTransactionIdQuery({ id: req.query.id });
+  const { error, value } = validateTransactionIdQuery({ id: req.params.id });
   if (error) {
     const errorMessages = error.details.map((d) => d.message).join(", ");
     throw new ApiError(400, `Validation error: ${errorMessages}`);
@@ -121,4 +126,4 @@ const deleteTransaction = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, null, "Transaction deleted successfully"));
 });
 
-export { getTransactions, createTransaction, updateTransaction, deleteTransaction };
+export { getTransactions, getTransaction, createTransaction, updateTransaction, deleteTransaction };

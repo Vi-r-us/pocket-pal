@@ -27,6 +27,12 @@ const fetchCategoriesSchema = Joi.object({
   includeHidden: Joi.boolean().optional().messages({
     "boolean.base": "includeHidden must be true or false",
   }),
+  isSystem: Joi.boolean().optional().messages({
+    "boolean.base": "isSystem must be true or false",
+  }),
+  isActive: Joi.boolean().optional().messages({
+    "boolean.base": "isActive must be true or false",
+  }),
 }).options({ convert: true });
 
 /** Used for POST create: name and type required; groupId optional. */

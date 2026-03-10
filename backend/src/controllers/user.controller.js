@@ -13,10 +13,22 @@ import { asyncHandler } from "../middlewares/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
 import logger from "../utils/logger.js";
+import {
+  validateRegister,
+  validateLogin,
+  validateUpdateProfile,
+  validateUpdatePassword,
+  validateUserIdParam,
+} from "../validators/user.validation.js";
 
 const registerUser = asyncHandler(async (req, res) => {
+  const { error, value } = validateRegister(req.body);
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
   const userData = {
-    ...req.body,
+    ...value,
     avatarFile: req.files?.avatar?.[0] || null,
     coverFile: req.files?.coverImage?.[0] || null,
   };
@@ -26,10 +38,13 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // req body -> data
-  const { email, username, password } = req.body;
+  const { error, value } = validateLogin(req.body);
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+  const { email, username, password } = value;
 
-  // Get logged in user data with tokens
   const loggedInUser = await loginUserService({ email, username, password });
 
   // Cookie options
@@ -96,35 +111,46 @@ const refreshTokens = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, accessToken, "Access token refreshed successfully"));
 });
 
-// Profile controllers
+// Resolve :id to current user id; only "me" is allowed (validated by validateUserIdParam).
+const resolveProfileUserId = (req) => {
+  const { error } = validateUserIdParam({ id: req.params.id });
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, errorMessages);
+  }
+  return req.user?.user_id;
+};
+
 const getProfile = asyncHandler(async (req, res) => {
-  const userId = req.user?.user_id;
+  const userId = resolveProfileUserId(req);
   const profile = await getProfileService(userId);
   return res.status(200).json(new ApiResponse(200, profile, "User profile fetched successfully"));
 });
 
 const updateProfile = asyncHandler(async (req, res) => {
-  const userId = req.user?.user_id;
-  // sanitize body for logs (remove password fields if present)
-  const safeBody = { ...req.body } || {};
+  const userId = resolveProfileUserId(req);
+  const { error, value } = validateUpdateProfile(req.body);
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+  const safeBody = { ...value };
   if (safeBody.password) safeBody.password = "[REDACTED]";
-  if (safeBody.currentPassword) safeBody.currentPassword = "[REDACTED]";
-  if (safeBody.newPassword) safeBody.newPassword = "[REDACTED]";
   logger.debug({ userId, body: safeBody }, "updateProfile request");
 
-  const updated = await updateProfileService(userId, req.body);
+  const updated = await updateProfileService(userId, value);
   return res.status(200).json(new ApiResponse(200, updated, "Profile updated successfully"));
 });
 
 const updateAvatar = asyncHandler(async (req, res) => {
-  const userId = req.user?.user_id;
+  const userId = resolveProfileUserId(req);
   const avatarFile = req.files?.avatar?.[0] || req.file || null;
   const updated = await updateAvatarService(userId, avatarFile);
   return res.status(200).json(new ApiResponse(200, updated, "Avatar updated successfully"));
 });
 
 const updateCoverImage = asyncHandler(async (req, res) => {
-  const userId = req.user?.user_id;
+  const userId = resolveProfileUserId(req);
   const coverFile = req.files?.coverImage?.[0] || req.file || null;
   if (!coverFile) throw new ApiError(400, "Cover image file is required");
   const updated = await updateCoverImageService(userId, coverFile);
@@ -132,8 +158,13 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 });
 
 const updatePassword = asyncHandler(async (req, res) => {
-  const userId = req.user?.user_id;
-  const { currentPassword, newPassword } = req.body;
+  const userId = resolveProfileUserId(req);
+  const { error, value } = validateUpdatePassword(req.body);
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+  const { currentPassword, newPassword } = value;
   await updatePasswordService(userId, currentPassword, newPassword);
   return res.status(200).json(new ApiResponse(200, null, "Password updated successfully"));
 });

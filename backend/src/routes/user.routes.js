@@ -31,11 +31,11 @@ router.route("/refresh-tokens").post(refreshTokens);
 // router.post("/forgot-password", forgotPassword);
 // router.post("/reset-password", resetPassword);
 
-// Profile Management Routes
-router.get("/me", verifyJWT, getProfile);
-router.patch("/me", verifyJWT, upload.none(), updateProfile);
-router.patch("/me/avatar", verifyJWT, upload.fields([{ name: "avatar", maxCount: 1 }]), updateAvatar);
-router.patch("/me/cover", verifyJWT, upload.fields([{ name: "coverImage", maxCount: 1 }]), updateCoverImage);
-router.patch("/me/password", verifyJWT, updatePassword);
+// Profile Management Routes (path param :id must be "me" for current user)
+router.get("/:id", verifyJWT, getProfile);
+router.patch("/:id", verifyJWT, upload.none(), updateProfile);
+router.patch("/:id/avatar", verifyJWT, upload.fields([{ name: "avatar", maxCount: 1 }]), updateAvatar);
+router.patch("/:id/cover", verifyJWT, upload.fields([{ name: "coverImage", maxCount: 1 }]), updateCoverImage);
+router.patch("/:id/password", verifyJWT, updatePassword);
 
 export default router;

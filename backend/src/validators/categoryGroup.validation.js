@@ -10,7 +10,7 @@ const titleCase = Joi.string().custom((value, helpers) => {
   return capitalizeTitleCase(value.trim());
 }, "title case sanitization");
 
-/** Used for GET list: optional type filter (expense | income | savings). Applied to req.body. */
+/** Used for GET list: optional type filter (expense | income | savings). Applied to req.query. */
 const fetchCategoryGroupsSchema = Joi.object({
   type: Joi.string()
     .lowercase()

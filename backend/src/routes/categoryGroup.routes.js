@@ -1,19 +1,21 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import {
-  createCategoriesGroup,
-  deleteCategoriesGroup,
-  getCategoriesGroup,
-  updateCategoriesGroup,
+  getCategoryGroups,
+  getCategoryGroup,
+  createCategoryGroup,
+  updateCategoryGroup,
+  deleteCategoryGroup,
 } from "../controllers/categoryGroup.controller.js";
 
 const router = Router();
 
-// Category Group Routes
-router.get("/", verifyJWT, getCategoriesGroup);
+router.route("/").get(verifyJWT, getCategoryGroups).post(verifyJWT, createCategoryGroup);
 
-router.post("/", verifyJWT, createCategoriesGroup);
-router.patch("/", verifyJWT, updateCategoriesGroup);
-router.delete("/", verifyJWT, deleteCategoriesGroup);
+router
+  .route("/:id")
+  .get(verifyJWT, getCategoryGroup)
+  .patch(verifyJWT, updateCategoryGroup)
+  .delete(verifyJWT, deleteCategoryGroup);
 
 export default router;

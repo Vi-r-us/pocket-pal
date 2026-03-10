@@ -80,6 +80,7 @@ const fetchCategoryGroup = async (userId, categoryGroupId) => {
           as: "categories",
           attributes: ["category_id", "name", "group_id"],
           where: { [Op.or]: [{ user_id: null }, { user_id: userId }] },
+          required: false, // LEFT JOIN so group is returned even when it has no matching categories
         },
       ],
     });

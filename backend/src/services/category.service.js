@@ -8,13 +8,13 @@ import { createLog } from "./log.service.js";
 
 /**
  * Fetches categories for a user: system categories (user_id null) plus the user's own, active only.
- * Optionally filtered by type, groupId. Excludes hidden categories unless includeHidden is true.
+ * Optionally filtered by type, groupId, isSystem, isActive. Excludes hidden categories unless includeHidden is true.
  * @param {number} userId
- * @param {Object} params - { type?, groupId?, includeHidden? }
+ * @param {Object} params - { type?, groupId?, includeHidden?, isSystem?, isActive? }
  */
 const fetchCategories = async (userId, params = {}) => {
-  const { type, groupId, includeHidden } = params || {};
-  logger.info({ userId, type, groupId, includeHidden }, "fetchCategories called");
+  const { type, groupId, includeHidden, isSystem, isActive } = params || {};
+  logger.info({ userId, type, groupId, includeHidden, isSystem, isActive }, "fetchCategories called");
 
   if (userId === undefined || userId === null || userId === "") {
     throw new ApiError(400, "User ID is required");
@@ -29,7 +29,13 @@ const fetchCategories = async (userId, params = {}) => {
       hiddenCategoryIds = hiddenCategories.map((cat) => cat.category_id);
     }
 
-    const whereClause = { is_active: true, [Op.or]: [{ user_id: null }, { user_id: userId }] };
+    const whereClause = { [Op.or]: [{ user_id: null }, { user_id: userId }] };
+    if (isActive !== undefined && isActive !== null) {
+      whereClause.is_active = isActive;
+    }
+    if (isSystem !== undefined && isSystem !== null) {
+      whereClause.is_system = isSystem;
+    }
     if (type) {
       whereClause.type = type;
     }

@@ -38,7 +38,9 @@ const createTransactionSchema = Joi.object({
     }),
   description: Joi.string().trim().allow("").optional(),
   metadata: Joi.object().optional(),
-  timestamp: Joi.date().optional(),
+  timestamp: Joi.date().iso().optional().messages({
+    "date.format": "timestamp must be in ISO 8601 format (e.g. 2026-02-16 or 2026-02-16T10:30:00.000Z)",
+  }),
 }).options({ convert: true });
 
 /** Used for GET list: optional filters (query params). */
@@ -98,8 +100,8 @@ const updateTransactionSchema = Joi.object({
   category_id: Joi.number().integer().positive().optional().messages({
     "number.base": "Category ID must be a number",
   }),
-  timestamp: Joi.date().optional().messages({
-    "date.base": "timestamp must be a valid date",
+  timestamp: Joi.date().iso().optional().messages({
+    "date.format": "timestamp must be in ISO 8601 format (e.g. 2026-02-16 or 2026-02-16T10:30:00.000Z)",
   }),
 })
   .min(1)
@@ -124,9 +126,4 @@ const validateUpdateTransaction = (data) => {
   return updateTransactionSchema.validate(data, { abortEarly: false });
 };
 
-export {
-  validateCreateTransaction,
-  validateFetchTransactions,
-  validateTransactionIdQuery,
-  validateUpdateTransaction,
-};
+export { validateCreateTransaction, validateFetchTransactions, validateTransactionIdQuery, validateUpdateTransaction };
