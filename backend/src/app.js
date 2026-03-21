@@ -8,6 +8,7 @@ import categoryGroupRoutes from "./routes/categoryGroup.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import budgetRoutes from "./routes/budget.routes.js";
 import goalRoutes from "./routes/goal.routes.js";
+import healthRoutes from "./routes/health.routes.js";
 import ApiResponse from "./utils/ApiResponse.js";
 import logger from "./utils/logger.js";
 import requestLogger from "./middlewares/requestLogger.js";
@@ -55,13 +56,14 @@ app.use("/api/v1/category-groups", categoryGroupRoutes);
 app.use("/api/v1/transactions", transactionRoutes);
 app.use("/api/v1/budgets", budgetRoutes);
 app.use("/api/v1/goals", goalRoutes);
+app.use("/api/v1/health", healthRoutes);
 
 // Global error handler (all failures)
 // This middleware handles errors that occur in the application
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   const status = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
-  const errors = err.errors || null;
+  const _errors = err.errors || null;
 
   // Log errors with structured logger
   try {
@@ -69,7 +71,6 @@ app.use((err, req, res, next) => {
     process.stdout.write("\n");
   } catch (logErr) {
     // fall back to console if logger fails
-    // eslint-disable-next-line no-console
     console.error("Error logging failed:", logErr);
   }
 

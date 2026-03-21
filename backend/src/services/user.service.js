@@ -338,7 +338,7 @@ const getProfile = async (userId) => {
 
     // get plain object and safely remove sensitive fields
     const userObj = user.get({ plain: true }) || {};
-    const { password, refreshToken, user_id, ...safeUser } = userObj;
+    const { password: _p, refreshToken: _r, user_id: _uid, ...safeUser } = userObj;
 
     logger.info({ userId: user.user_id, public_id: user.public_id }, "User profile fetched successfully");
 
@@ -381,7 +381,7 @@ const updateProfile = async (userId, data = {}) => {
 
     const after = user.get({ plain: true }) || {};
     const userObj = after;
-    const { password, refreshToken, user_id, ...safeUser } = userObj;
+    const { password: _p, refreshToken: _r, user_id: _uid, ...safeUser } = userObj;
 
     // prepare change diff
     const changedOld = {};
@@ -452,7 +452,7 @@ const updateAvatar = async (userId, avatarFile) => {
     // get plain object and safely remove sensitive fields
     const after = user.get({ plain: true }) || {};
     const userObj = after;
-    const { password, refreshToken, user_id, ...safeUser } = userObj;
+    const { password: _p, refreshToken: _r, user_id: _uid, ...safeUser } = userObj;
 
     // enqueue change log for avatar
     try {
@@ -513,7 +513,7 @@ const updateCoverImage = async (userId, coverFile) => {
     // get plain object and safely remove sensitive fields
     const after = user.get({ plain: true }) || {};
     const userObj = after;
-    const { password, refreshToken, user_id, ...safeUser } = userObj;
+    const { password: _p, refreshToken: _r, user_id: _uid, ...safeUser } = userObj;
 
     // enqueue change log for cover image
     try {

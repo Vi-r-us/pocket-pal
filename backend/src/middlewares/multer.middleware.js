@@ -14,7 +14,7 @@ const storage = multer.diskStorage({
     try {
       // Ensure directory exists (recursive)
       fs.mkdirSync(dest, { recursive: true });
-    } catch (err) {
+    } catch {
       // ignore if already exists or let multer handle error
     }
     // Set the destination directory for uploaded files

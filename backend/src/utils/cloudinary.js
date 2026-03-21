@@ -36,7 +36,7 @@ export const uploadImageOnCloudinary = async (filePath, folder = "pocketpal", pu
         .trim()
         .toLowerCase()
         .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_\-]/g, "");
+        .replace(/[^a-z0-9_-]/g, "");
 
     const options = {
       folder,
@@ -57,7 +57,9 @@ export const uploadImageOnCloudinary = async (filePath, folder = "pocketpal", pu
     // Remove the file from local storage after upload
     try {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    } catch (error) {}
+    } catch {
+      // ignore; best-effort cleanup
+    }
 
     return result;
   } catch (error) {

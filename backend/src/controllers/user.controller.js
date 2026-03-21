@@ -71,7 +71,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   await logoutUserService(userId);
 
   // Clear cookies
-  const option = {
+  const clearOptions = {
     httpOnly: true,
     // secure: process.env.NODE_ENV === "production",
     secure: true,
@@ -80,8 +80,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .clearCookie("accessToken")
-    .clearCookie("refreshToken")
+    .clearCookie("accessToken", clearOptions)
+    .clearCookie("refreshToken", clearOptions)
     .json(new ApiResponse(200, null, "User logged out successfully"));
 });
 

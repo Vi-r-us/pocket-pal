@@ -6,7 +6,7 @@ import { VALID_CATEGORY_TYPES } from "../constants/constants.js";
  * Joi custom type: normalizes string to title case (e.g. "my group" -> "My Group").
  * Used for category group names so they are stored consistently.
  */
-const titleCase = Joi.string().custom((value, helpers) => {
+const titleCase = Joi.string().custom((value, _helpers) => {
   return capitalizeTitleCase(value.trim());
 }, "title case sanitization");
 

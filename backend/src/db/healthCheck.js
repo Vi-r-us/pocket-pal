@@ -5,7 +5,7 @@ export async function healthCheckDB() {
     const client = await pool.connect();
     client.release();
     return true;
-  } catch (err) {
+  } catch {
     return false;
   }
 }

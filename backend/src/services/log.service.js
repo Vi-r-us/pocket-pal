@@ -15,7 +15,7 @@ function sanitizeObject(obj) {
     const str = JSON.stringify(obj);
     if (str.length > MAX_JSON_SIZE) return { _truncated: true };
     return obj;
-  } catch (e) {
+  } catch {
     return { _error: "unable_to_serialize" };
   }
 }

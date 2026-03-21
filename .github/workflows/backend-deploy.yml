@@ -1,0 +1,20 @@
+# Deploys backend to Render when backend (or this workflow) changes on develop or prod.
+# Add secrets: RENDER_DEPLOY_HOOK_STAGING, RENDER_DEPLOY_HOOK_PRODUCTION (from Render dashboard → Service → Deploy Hook).
+name: Backend Deploy
+on:
+  push:
+    branches: [develop, prod]
+    paths: ["backend/**", ".github/workflows/backend-deploy.yml"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/prod' && 'production' || 'staging' }}
+    steps:
+      - name: Trigger Render deploy (staging)
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_STAGING }}"
+      - name: Trigger Render deploy (production)
+        if: github.ref == 'refs/heads/prod'
+        run: |
+          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION }}"

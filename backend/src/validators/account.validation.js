@@ -5,7 +5,7 @@ import { VALID_ACCOUNT_TYPES } from "../constants/constants.js";
 /**
  * Joi custom type: normalizes string to title case (e.g. "my account" -> "My Account").
  */
-const titleCase = Joi.string().custom((value, helpers) => {
+const titleCase = Joi.string().custom((value, _helpers) => {
   return capitalizeTitleCase(value.trim());
 }, "title case sanitization");
 

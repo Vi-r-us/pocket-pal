@@ -23,9 +23,6 @@ const createGoalSchema = Joi.object({
     "string.length": "Currency code must be 3 characters",
     "any.required": "target_currency is required",
   }),
-  category_id: Joi.number().integer().positive().optional().messages({
-    "number.base": "category_id must be a number",
-  }),
   start_date: Joi.date().required().messages({
     "date.base": "start_date must be a valid date",
     "any.required": "start_date is required",

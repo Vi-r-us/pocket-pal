@@ -1,5 +1,4 @@
 import dotenv from "dotenv";
-import pool from "./pool.js";
 import { sequelize } from "./sequelize.js";
 // Ensure models are loaded so sequelize knows about them
 import "../models/index.js";
@@ -28,14 +27,19 @@ const connectDB = async () => {
   try {
     await sequelize.authenticate();
 
-    // Create / update tables based on models.
-    // In dev use alter: true. For production use migrations instead.
-    await sequelize.sync({ alter: true });
+    // Dev: sync schema from models. Production/staging on hosts: use migrations only (no alter).
+    const nodeEnv = process.env.NODE_ENV || "development";
+    if (nodeEnv !== "production") {
+      await sequelize.sync({ alter: true });
+    }
 
-    const [result] = await sequelize.query('SELECT current_database()');
+    const [result] = await sequelize.query("SELECT current_database()");
 
     console.log("Current DB:", result[0].current_database);
-    console.log("Connected to database:", process.env.DATABASE);
+    console.log(
+      "Connected to database:",
+      process.env.DATABASE_URL ? "(DATABASE_URL)" : process.env.DATABASE
+    );
   } catch (err) {
     console.error("Unable to connect to DB:", err);
     process.exit(1);

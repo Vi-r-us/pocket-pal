@@ -1,0 +1,21 @@
+# Deploys frontend to Vercel (or static host) when frontend (or this workflow) changes on develop or prod.
+# Add secrets: VERCEL_DEPLOY_HOOK_STAGING, VERCEL_DEPLOY_HOOK_PRODUCTION (from Vercel project → Settings → Git → Deploy Hooks).
+# If using Render Static Site instead, use Render deploy hook URLs and update the secret names in the steps.
+name: Frontend Deploy
+on:
+  push:
+    branches: [develop, prod]
+    paths: ["frontend/**", ".github/workflows/frontend-deploy.yml"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/prod' && 'production' || 'staging' }}
+    steps:
+      - name: Trigger Vercel deploy (staging)
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          curl -f -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_STAGING }}"
+      - name: Trigger Vercel deploy (production)
+        if: github.ref == 'refs/heads/prod'
+        run: |
+          curl -f -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_PRODUCTION }}"

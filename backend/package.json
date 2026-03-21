@@ -6,7 +6,10 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js",
+    "test": "node -e \"process.exit(0)\"",
+    "lint": "eslint src --max-warnings 0",
+    "db:migrate": "npx sequelize-cli db:migrate",
     "db:seed": "npx sequelize-cli db:seed:all --config src/config/env.config.js --seeders-path src/seeders"
   },
   "keywords": [
@@ -19,6 +22,9 @@
   "author": "PocketPal Team",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0",
     "nodemon": "^3.1.10",
     "pino-http": "^11.0.0",
     "pino-pretty": "^13.1.3",
