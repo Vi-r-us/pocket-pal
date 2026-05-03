@@ -18,9 +18,41 @@ const app = express();
 // CORS setup
 // This middleware enables CORS with a specific origin and allows credentials
 // to be included in cross-origin requests
+const normalizeOrigin = (origin = "") =>
+  origin
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
+
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const allowedOriginsSet = new Set(allowedOrigins);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:8000",
+    origin: (origin, callback) => {
+      // Allow non-browser clients (no Origin header) and explicitly whitelisted origins
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+      const isLocalhostDevOrigin =
+        normalizedOrigin.startsWith("http://localhost:") ||
+        normalizedOrigin.startsWith("http://127.0.0.1:");
+
+      if (allowedOriginsSet.has(normalizedOrigin) || isLocalhostDevOrigin) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );

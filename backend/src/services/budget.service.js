@@ -206,7 +206,7 @@ async function getBudgetSummary(userId, yyyyMm) {
       where: {
         user_id: userId,
         timestamp: { [Op.between]: [startDate, endDate] },
-        type: { [Op.in]: ["withdrawal", "savings"] },
+        type: { [Op.in]: ["expense", "withdrawal", "savings"] },
       },
       attributes: ["category_id", "base_currency", "amount_base_minor"],
       raw: true,

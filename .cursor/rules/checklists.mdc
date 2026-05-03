@@ -1,0 +1,27 @@
+---
+description: "Manual checklists for adding new endpoints/models/features in PocketPal (invoke with @checklists)."
+globs: ""
+alwaysApply: false
+---
+
+# PocketPal Checklists (Manual)
+
+## Adding a new API endpoint
+1. **Route**: add a route in `backend/src/routes/*` and mount it in `backend/src/app.js`.
+2. **Controller**: create a controller function in `backend/src/controllers/*` using `asyncHandler`.
+3. **Validation**: create Joi schemas in `backend/src/validators/*` and validate in the controller.
+4. **Service**: implement business logic in `backend/src/services/*`.
+5. **Errors**: throw `ApiError` for expected failures; use `handleServerError` for unexpected ones.
+6. **Logging**: add structured `logger.info` + (if business-relevant) `createLog(...)`.
+7. **Docs**: add a Postman request + README snippet if it’s a public API.
+
+## Adding a new Sequelize model/table
+1. Create `backend/src/models/<name>.model.js` using the existing `Model.init + associate` pattern.
+2. Add migrations (preferred for production) and a seeder if needed.
+3. Register the model in `backend/src/models/index.js` and ensure associations are wired.
+4. Add indexes for common filters + FK columns.
+
+## Adding a new “system default” dataset
+1. Add a seeder in `backend/src/seeders/*.cjs`.
+2. Make it idempotent (check existing rows before insert).
+3. Ensure it does not delete user data in `down()`.

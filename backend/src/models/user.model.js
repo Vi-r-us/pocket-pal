@@ -2,9 +2,9 @@ import { DataTypes, Model } from "sequelize";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-const JWT_ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET || "default_jwt_secret";
+const JWT_ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET;
 const JWT_ACCESS_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRY || "15m";
-const JWT_REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "default_jwt_secret";
+const JWT_REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET;
 const JWT_REFRESH_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRY || "7d";
 
 class User extends Model {
@@ -44,10 +44,15 @@ const defineUserModel = (sequelize) => {
       },
       username: {
         type: DataTypes.STRING(50),
-        allowNull: false,
+        allowNull: true,
         unique: true,
         set(value) {
-          this.setDataValue("username", value.trim().toLowerCase());
+          if (value === undefined || value === null) {
+            this.setDataValue("username", null);
+            return;
+          }
+          const normalizedValue = String(value).trim().toLowerCase();
+          this.setDataValue("username", normalizedValue || null);
         },
         validate: {
           notEmpty: true,

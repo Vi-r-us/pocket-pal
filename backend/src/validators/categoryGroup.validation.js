@@ -1,6 +1,14 @@
 import Joi from "joi";
 import { capitalizeTitleCase } from "../utils/sanitize.js";
 import { VALID_CATEGORY_TYPES } from "../constants/constants.js";
+import { ALLOWED_CATEGORY_ICON_KEYS } from "../constants/categoryIconKeys.js";
+
+const optionalIconKey = Joi.alternatives()
+  .try(Joi.string().valid(...ALLOWED_CATEGORY_ICON_KEYS), Joi.valid(null))
+  .optional()
+  .messages({
+    "alternatives.match": "iconKey must be a valid icon key or null",
+  });
 
 /**
  * Joi custom type: normalizes string to title case (e.g. "my group" -> "My Group").
@@ -38,6 +46,7 @@ const createCategoryGroupSchema = Joi.object({
       "string.empty": "Type is required",
       "any.required": "Type is required",
     }),
+  iconKey: optionalIconKey,
 });
 
 /** Used for PATCH update: at least one of name or type; both optional. No empty updates. */
@@ -51,6 +60,7 @@ const updateCategoryGroupSchema = Joi.object({
     .messages({
       "any.only": `Type must be one of: ${VALID_CATEGORY_TYPES.join(", ")}`,
     }),
+  iconKey: optionalIconKey,
 })
   .min(1)
   .messages({

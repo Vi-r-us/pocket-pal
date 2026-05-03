@@ -20,6 +20,9 @@ const defineCategoryGroupModel = (sequelize) => {
       user_id: { type: DataTypes.INTEGER, allowNull: true },
       type: { type: DataTypes.ENUM("income", "expense", "savings"), allowNull: false },
       name: { type: DataTypes.STRING(80), allowNull: false },
+
+      /** Lucide icon export name from allow-list; null = default placeholder in UI */
+      icon_key: { type: DataTypes.STRING(64), allowNull: true },
     },
     {
       sequelize,

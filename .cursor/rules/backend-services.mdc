@@ -1,0 +1,43 @@
+---
+description: "Service-layer conventions (business logic, DB access, error handling, audit logs)."
+globs: "backend/src/services/**/*.js"
+alwaysApply: false
+---
+
+# Backend: Service Layer Conventions
+
+## Responsibilities
+- Services contain **business logic** and DB operations (Sequelize).
+- Services must not depend on Express (`req`, `res`).
+- Services should return plain JS objects or Sequelize instances (controllers decide response shape).
+
+## Errors
+- Throw `ApiError` for expected failures (validation, not found, conflict, permission).
+- For unexpected errors, call `handleServerError(err, message, status)` (pattern used in existing services).
+- Do **not** return `null` / `undefined` silently on errors.
+
+## Logging
+- Use `logger` (`backend/src/utils/logger.js`) with structured messages.
+- Log:
+  - entry points (`logger.info({ ... }, "functionName called")`)
+  - important branches (e.g., conflicts/not found)
+  - unexpected errors via `handleServerError`
+- Never log secrets (passwords, tokens, refresh tokens, Cloudinary secrets, Plaid access tokens).
+
+## Audit / business logs
+- Use `createLog(...)` from `backend/src/services/log.service.js` for audit/change/error/system events.
+- Logging must be **non-blocking** for primary user flows:
+  - call in a `try/catch` and use `void createLog(...)` so failures don’t break the request.
+- Use consistent fields:
+  - `log_type`: `audit | change | error | system`
+  - `action`: short stable string (e.g. `user_login`, `transaction_create`)
+  - `entity`: table/entity name (`users`, `categories`, `transactions`)
+  - `entity_id`: typically `public_id` when available
+  - `details`: `{ source, requestId, ip, userAgent, ... }`
+
+## Transactions
+- When a service writes to multiple tables and needs atomicity, use `sequelize.transaction(...)`.
+
+## Input normalization
+- Normalize in service layer (trim, lowercase, title case) using `backend/src/utils/sanitize.js`.
+- Never trust client input; validate and normalize before DB writes.

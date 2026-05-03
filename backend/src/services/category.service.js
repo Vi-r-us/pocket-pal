@@ -108,7 +108,7 @@ const createCategory = async (userId, categoryData) => {
       throw new ApiError(400, "User ID is required to create a category");
     }
 
-    let { name, type, groupId } = categoryData;
+    let { name, type, groupId, iconKey } = categoryData;
     if (!name || !type) {
       throw new ApiError(400, "Category name and type are required");
     }
@@ -140,14 +140,19 @@ const createCategory = async (userId, categoryData) => {
       }
     }
 
-    const newCategory = await Category.create({
+    const createPayload = {
       name,
       type,
       group_id: groupId || null,
       is_system: false,
       is_active: true,
       user_id: userId,
-    });
+    };
+    if (Object.prototype.hasOwnProperty.call(categoryData, "iconKey")) {
+      createPayload.icon_key = iconKey;
+    }
+
+    const newCategory = await Category.create(createPayload);
 
     logger.info({ userId, categoryId: newCategory.category_id }, "Category created");
     return newCategory;
@@ -204,6 +209,9 @@ const updateCategory = async (userId, categoryId, updateData) => {
         }
         category.group_id = updateData.groupId;
       }
+    }
+    if (updateData.iconKey !== undefined) {
+      category.icon_key = updateData.iconKey;
     }
 
     const updatedCategory = await category.save();

@@ -28,6 +28,9 @@ const defineCategoryModel = (sequelize) => {
       is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
       // System categories cannot be disabled or modified by users
       is_system: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+
+      /** Lucide icon export name from allow-list; null = inherit from group in UI or use default */
+      icon_key: { type: DataTypes.STRING(64), allowNull: true },
     },
     {
       sequelize,

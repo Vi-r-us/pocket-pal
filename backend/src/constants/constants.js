@@ -6,7 +6,15 @@ export const VALID_CATEGORY_TYPES = ["expense", "income", "savings"];
 export const VALID_ACCOUNT_TYPES = ["bank", "cash", "savings", "credit_card"];
 
 // Valid transaction types
-export const VALID_TRANSACTION_TYPES = ["deposit", "withdrawal", "savings"];
+export const VALID_TRANSACTION_TYPES = ["income", "expense", "savings"];
+export const VALID_TRANSACTION_TYPE_INPUTS = [...VALID_TRANSACTION_TYPES, "deposit", "withdrawal"];
+export const TRANSACTION_TYPE_NORMALIZATION_MAP = {
+  deposit: "income",
+  withdrawal: "expense",
+  income: "income",
+  expense: "expense",
+  savings: "savings",
+};
 // Valid transaction sources
 export const VALID_TRANSACTION_SOURCES = ["manual", "recurring", "transfer", "external"];
 

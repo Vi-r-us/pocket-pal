@@ -3,6 +3,12 @@ import { DB_NAME } from "./constants/constants.js";
 import connectDB from "./db/index.js";
 
 const port = process.env.PORT || 8000;
+const requiredEnvVars = ["ACCESS_TOKEN_SECRET", "REFRESH_TOKEN_SECRET"];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (missingEnvVars.length) {
+  throw new Error(`Missing required environment variables: ${missingEnvVars.join(", ")}`);
+}
 
 connectDB()
   .then(() => {

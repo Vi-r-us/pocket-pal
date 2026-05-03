@@ -62,7 +62,12 @@ const createCategoryGroup = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Validation error: ${errorMessages}`);
   }
 
-  const newCategoryGroup = await createCategoryGroupService(userId, value);
+  const payload = { name: value.name, type: value.type };
+  if (Object.prototype.hasOwnProperty.call(value, "iconKey")) {
+    payload.icon_key = value.iconKey;
+  }
+
+  const newCategoryGroup = await createCategoryGroupService(userId, payload);
   return res.status(201).json(new ApiResponse(201, newCategoryGroup, "Category group created successfully"));
 });
 
@@ -86,7 +91,14 @@ const updateCategoryGroup = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Validation error: ${errorMessages}`);
   }
 
-  const updatedCategoryGroup = await updateCategoryGroupService(userId, categoryGroupId, value);
+  const payload = {};
+  if (value.name !== undefined) payload.name = value.name;
+  if (value.type !== undefined) payload.type = value.type;
+  if (Object.prototype.hasOwnProperty.call(value, "iconKey")) {
+    payload.icon_key = value.iconKey;
+  }
+
+  const updatedCategoryGroup = await updateCategoryGroupService(userId, categoryGroupId, payload);
   return res.status(200).json(new ApiResponse(200, updatedCategoryGroup, "Category group updated successfully"));
 });
 

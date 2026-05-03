@@ -1,4 +1,5 @@
 import { Op } from "sequelize";
+import { randomBytes, randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
 import ApiError from "../utils/ApiError.js";
@@ -20,6 +21,7 @@ const generateAccessAndRefreshToken = async (userId) => {
   try {
     // Generate tokens
     const user = await User.findByPk(userId);
+    if (!user) throw new ApiError(404, "User not found");
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
@@ -34,41 +36,73 @@ const generateAccessAndRefreshToken = async (userId) => {
   }
 };
 
+const normalizeUsername = (value = "") => String(value).trim().toLowerCase();
+
+const sanitizeUsernameSeed = (value = "") =>
+  String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 50);
+
+const normalizeEmail = (value = "") => String(value).trim().toLowerCase();
+
+const buildCloudinaryPublicId = (publicId, assetType) => `${publicId}_${assetType}`;
+
+const generateUniqueUsername = async (seedValue = "user") => {
+  const seed = sanitizeUsernameSeed(seedValue).replace(/^_+/, "");
+  const base = (seed.length >= 3 ? seed : "user").slice(0, 40);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const suffix = randomBytes(3).toString("hex");
+    const candidate = `${base}_${suffix}`.slice(0, 50);
+    const existing = await User.findOne({ where: { username: candidate } });
+    if (!existing) return candidate;
+  }
+
+  throw new ApiError(500, "Unable to generate unique username");
+};
+
 /**
- * Registers a new user with the provided username, email, fullname, password, avatar file and cover file.
+ * Registers a new user with the provided email, fullname, password, optional username, avatar file and cover file.
  * The function validates the required fields, checks for existing users, checks password strength and
  * checks the size of the avatar and cover files if provided. If any of the checks fail, an ApiError is thrown.
  * The function then handles the avatar and cover files if provided, prepares the user data, creates a new
  * user in the database and returns the new user data without sensitive fields.
  *
- * @param {{ username: string, email: string, fullname: string, password: string, avatarFile: Express.Multer.File, coverFile: Express.Multer.File }}}
+ * @param {{ username?: string, email: string, fullname: string, password: string, avatarFile: Express.Multer.File, coverFile: Express.Multer.File }}}
  * @returns {Promise<Object>}
  * @throws {ApiError}
  */
 const registerUser = async ({ username, email, fullname, password, avatarFile, coverFile }) => {
   try {
     logger.info({ username, email }, "registerUser called");
-  
+
     // Validate required fields
-    if ([username, email, fullname, password].some((field) => field?.trim() === "")) {
+    if ([email, fullname, password].some((field) => field?.trim() === "")) {
       throw new ApiError(400, "Missing required fields");
     }
-  
-    // Check for existing user
-    const existingUser = await User.findOne({
-      where: {
-        [Op.or]: [{ username }, { email }],
-      },
-    });
-    if (existingUser) {
-      throw new ApiError(409, "Username or email already exists");
+
+    const normalizedEmail = normalizeEmail(email);
+    const providedUsername = username ? normalizeUsername(username) : null;
+
+    // Check for existing user by email
+    const existingEmail = await User.findOne({ where: { email: normalizedEmail } });
+    if (existingEmail) throw new ApiError(409, "Email already exists");
+
+    let finalUsername = providedUsername;
+    if (finalUsername) {
+      const existingUsername = await User.findOne({ where: { username: finalUsername } });
+      if (existingUsername) throw new ApiError(409, "Username already exists");
+    } else {
+      finalUsername = await generateUniqueUsername(normalizedEmail.split("@")[0]);
     }
-  
+
     // Check password strength
     if (password.trim().length < 8) {
       throw new ApiError(400, "Password must be at least 8 characters long");
     }
-  
+
     // Check avatar and cover file size
     if (avatarFile && avatarFile.size > 5 * 1024 * 1024) {
       throw new ApiError(400, "Avatar file size must be less than 5MB");
@@ -76,33 +110,44 @@ const registerUser = async ({ username, email, fullname, password, avatarFile, c
     if (coverFile && coverFile.size > 5 * 1024 * 1024) {
       throw new ApiError(400, "Cover image file size must be less than 5MB");
     }
-  
+
+    const publicId = randomUUID();
+
     // Handle avatar and cover file if provided
     let avatarUrl = null;
     if (avatarFile) {
-      avatarUrl = await uploadImageOnCloudinary(avatarFile.path, "pocketpal/avatars", username);
+      avatarUrl = await uploadImageOnCloudinary(
+        avatarFile.path,
+        "pocketpal/avatars",
+        buildCloudinaryPublicId(publicId, "avatar")
+      );
     }
-  
+
     let coverImageUrl = null;
     if (coverFile) {
-      coverImageUrl = await uploadImageOnCloudinary(coverFile.path, "pocketpal/covers", username);
+      coverImageUrl = await uploadImageOnCloudinary(
+        coverFile.path,
+        "pocketpal/covers",
+        buildCloudinaryPublicId(publicId, "cover")
+      );
     }
-  
+
     // Prepare user data
     const userData = {
-      username: username.trim(),
-      email: email.trim().toLowerCase(),
+      public_id: publicId,
+      username: finalUsername,
+      email: normalizedEmail,
       fullname: fullname.trim(),
       password: password.trim(),
       avatar: avatarUrl?.secure_url || null,
       coverImage: coverImageUrl?.secure_url || null,
     };
-  
+
     // Create user in DB
     const newUser = await User.create(userData);
-  
+
     logger.info({ userId: newUser.user_id }, "User registered successfully");
-  
+
     // Enqueue an audit log for user registration (non-blocking)
     try {
       const created = newUser.get({ plain: true }) || {};
@@ -154,6 +199,7 @@ const registerUser = async ({ username, email, fullname, password, avatarFile, c
  */
 const loginUser = async ({ email, username, password }) => {
   logger.info({ email, username }, "loginUser called");
+  const invalidCredentialsMessage = "Invalid credentials";
 
   try {
     // Validate required fields (email or username and password)
@@ -161,11 +207,21 @@ const loginUser = async ({ email, username, password }) => {
       throw new ApiError(400, "Username or email and password are required");
     }
   
+    const normalizedEmail = email ? normalizeEmail(email) : null;
+    const normalizedUsername = username ? normalizeUsername(username) : null;
+
     // Find user by username or email
+    let whereClause;
+    if (normalizedEmail && normalizedUsername) {
+      whereClause = { [Op.and]: [{ email: normalizedEmail }, { username: normalizedUsername }] };
+    } else if (normalizedEmail) {
+      whereClause = { email: normalizedEmail };
+    } else {
+      whereClause = { username: normalizedUsername };
+    }
+
     const user = await User.scope("withSecrets").findOne({
-      where: {
-        [Op.or]: [{ username: username || null }, { email: email || null }],
-      },
+      where: whereClause,
     });
   
     // if user not found, throw error
@@ -182,7 +238,7 @@ const loginUser = async ({ email, username, password }) => {
       } catch (e) {
         logger.error({ err: e }, "Failed to enqueue auth_failed log (user not found)");
       }
-      throw new ApiError(404, "User not found");
+      throw new ApiError(401, invalidCredentialsMessage);
     }
   
     // Check password
@@ -201,7 +257,7 @@ const loginUser = async ({ email, username, password }) => {
       } catch (e) {
         logger.error({ err: e }, "Failed to enqueue auth_failed log (invalid password)");
       }
-      throw new ApiError(401, "Invalid password");
+      throw new ApiError(401, invalidCredentialsMessage);
     }
   
     // Generate access token and refresh token
@@ -253,6 +309,7 @@ const logoutUser = async (userId) => {
   try {
     // Find user by ID
     const user = await User.findByPk(userId);
+    if (!user) throw new ApiError(404, "User not found");
   
     // set refresh token to null
     user.refreshToken = null;
@@ -445,7 +502,11 @@ const updateAvatar = async (userId, avatarFile) => {
     if (!user) throw new ApiError(404, "User not found");
 
     const before = user.get({ plain: true }) || {};
-    const avatarUrl = await uploadImageOnCloudinary(avatarFile.path, "pocketpal/avatars", user.username);
+    const avatarUrl = await uploadImageOnCloudinary(
+      avatarFile.path,
+      "pocketpal/avatars",
+      buildCloudinaryPublicId(user.public_id, "avatar")
+    );
     user.avatar = avatarUrl?.secure_url || user.avatar;
     await user.save({ validate: false });
 
@@ -506,7 +567,11 @@ const updateCoverImage = async (userId, coverFile) => {
     if (!user) throw new ApiError(404, "User not found");
 
     const before = user.get({ plain: true }) || {};
-    const coverUrl = await uploadImageOnCloudinary(coverFile.path, "pocketpal/covers", user.username);
+    const coverUrl = await uploadImageOnCloudinary(
+      coverFile.path,
+      "pocketpal/covers",
+      buildCloudinaryPublicId(user.public_id, "cover")
+    );
     user.coverImage = coverUrl?.secure_url || user.coverImage;
     await user.save({ validate: false });
 
@@ -571,6 +636,7 @@ const updatePassword = async (userId, currentPassword, newPassword) => {
     if (!match) throw new ApiError(401, "Current password is incorrect");
 
     user.password = newPassword.trim();
+    user.refreshToken = null;
     await user.save();
 
     // enqueue password change audit log (do not include password values)

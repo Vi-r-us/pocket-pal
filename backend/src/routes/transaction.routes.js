@@ -2,6 +2,7 @@ import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import {
   getTransactions,
+  getTransactionSummary,
   getTransaction,
   createTransaction,
   updateTransaction,
@@ -12,6 +13,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 const router = Router();
 
 router.route("/").get(verifyJWT, getTransactions).post(verifyJWT, upload.none(), createTransaction);
+router.route("/summary").get(verifyJWT, getTransactionSummary);
 
 router
   .route("/:id")

@@ -1,4 +1,5 @@
 import { DataTypes, Model } from "sequelize";
+import { VALID_TRANSACTION_TYPE_INPUTS } from "../constants/constants.js";
 
 class Transaction extends Model {}
 
@@ -22,7 +23,8 @@ const defineTransactionModel = (sequelize) => {
       base_currency: { type: DataTypes.STRING(3), allowNull: false, references: { model: "currencies", key: "code" } },
       amount_base_minor: { type: DataTypes.BIGINT, allowNull: false },
 
-      type: { type: DataTypes.STRING(20), allowNull: false, validate: { isIn: [["deposit", "withdrawal", "savings"]] } }, // deposit, withdrawal, savings
+      // Keep legacy aliases during transition to avoid validation failures on existing rows.
+      type: { type: DataTypes.STRING(20), allowNull: false, validate: { isIn: [VALID_TRANSACTION_TYPE_INPUTS] } },
 
       source: {
         type: DataTypes.ENUM("manual", "recurring", "transfer", "external"),

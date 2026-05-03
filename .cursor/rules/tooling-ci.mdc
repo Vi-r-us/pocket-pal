@@ -1,0 +1,31 @@
+---
+description: "Tooling + CI/CD conventions (scripts, linting, formatting, migrations, tests)."
+globs: "backend/package.json,backend/package-lock.json,.github/workflows/**/*.yml,docker-compose.yml"
+alwaysApply: false
+---
+
+# Tooling + CI/CD
+
+## Keep CI and scripts aligned
+- If `.github/workflows/*` calls `npm run <script>`, ensure that script exists in `backend/package.json`.
+- Prefer deterministic installs (`npm ci`) and lockfile consistency.
+
+## Formatting
+- Prettier is the source of truth (`backend/.prettierrc`).
+- Prefer adding a script:
+  - `format`: run Prettier
+  - `format:check`: verify formatting in CI
+
+## Linting (recommended)
+- Add ESLint and a `lint` script for CI.
+- Keep lint rules compatible with ES Modules and Node 20.
+
+## Database migrations (recommended)
+- Prefer migrations for production/staging.
+- Add scripts:
+  - `db:migrate`: run migrations
+  - `db:seed`: run seeders (already exists)
+
+## Tests (recommended)
+- Add a test runner (Jest or Vitest) and a `test` script.
+- Prefer integration tests for routes/services with a disposable Postgres in CI.

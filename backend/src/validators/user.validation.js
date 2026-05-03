@@ -15,9 +15,7 @@ const usernameSchema = Joi.string()
 
 /** Used for POST register: username, email, fullname, password. Files validated in controller. */
 const registerSchema = Joi.object({
-  username: usernameSchema.required().messages({
-    "any.required": "Username is required",
-  }),
+  username: usernameSchema.optional().empty(""),
   email: Joi.string()
     .trim()
     .lowercase()
@@ -49,14 +47,11 @@ const registerSchema = Joi.object({
 
 /** Used for POST login: email or username (at least one non-empty), and password. */
 const loginSchema = Joi.object({
-  email: Joi.string().trim().lowercase().email().min(1).optional().messages({
+  email: Joi.string().trim().lowercase().email().optional().messages({
     "string.email": "Please provide a valid email",
-    "string.min": "Email cannot be empty",
   }),
-  username: Joi.string().trim().lowercase().min(1).optional().messages({
-    "string.min": "Username cannot be empty",
-  }),
-  password: Joi.string().required().messages({
+  username: usernameSchema.optional(),
+  password: Joi.string().trim().required().messages({
     "any.required": "Password is required",
   }),
 })

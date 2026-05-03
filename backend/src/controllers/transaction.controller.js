@@ -2,6 +2,7 @@ import { asyncHandler } from "../middlewares/asyncHandler.js";
 import {
   createTransaction as createTransactionService,
   fetchTransactions as fetchTransactionsService,
+  fetchTransactionSummary as fetchTransactionSummaryService,
   fetchTransaction as fetchTransactionService,
   updateTransaction as updateTransactionService,
   deleteTransaction as deleteTransactionService,
@@ -17,7 +18,9 @@ import {
 
 /**
  * GET /transactions
- * Returns list of user's transactions. Optional query filters: account_id, category_id, type, date_from, date_to.
+ * Returns paginated list of user's transactions.
+ * Optional query filters: account_id, category_id, type, source, amount_min, amount_max, q, date_from, date_to.
+ * Optional pagination/sort: page, limit, sort_by, sort_order.
  */
 const getTransactions = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
@@ -28,8 +31,25 @@ const getTransactions = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Validation error: ${errorMessages}`);
   }
 
-  const transactions = await fetchTransactionsService(userId, value);
-  return res.status(200).json(new ApiResponse(200, transactions, "Transactions fetched successfully"));
+  const result = await fetchTransactionsService(userId, value);
+  return res.status(200).json(new ApiResponse(200, result, "Transactions fetched successfully"));
+});
+
+/**
+ * GET /transactions/summary
+ * Returns aggregated totals for matching transaction filters.
+ */
+const getTransactionSummary = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+
+  const { error, value } = validateFetchTransactions(req.query);
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+
+  const result = await fetchTransactionSummaryService(userId, value);
+  return res.status(200).json(new ApiResponse(200, result, "Transaction summary fetched successfully"));
 });
 
 /**
@@ -126,4 +146,4 @@ const deleteTransaction = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, null, "Transaction deleted successfully"));
 });
 
-export { getTransactions, getTransaction, createTransaction, updateTransaction, deleteTransaction };
+export { getTransactions, getTransactionSummary, getTransaction, createTransaction, updateTransaction, deleteTransaction };

@@ -1,0 +1,21 @@
+---
+description: "State management, API typing, and view states (frontend/)."
+globs: "frontend/src/features/**/*.ts,frontend/src/features/**/*.tsx,frontend/src/features/**/*.js,frontend/src/features/**/*.jsx,frontend/src/lib/**/*.ts,frontend/src/lib/**/*.tsx,frontend/src/lib/**/*.js,frontend/src/lib/**/*.jsx,frontend/src/pages/**/*.ts,frontend/src/pages/**/*.tsx,frontend/src/pages/**/*.js,frontend/src/pages/**/*.jsx"
+alwaysApply: false
+---
+
+State + data rules:
+- Prefer local state (useState) for UI state.
+- For shared state across many components:
+  - Ask before introducing Zustand or any external store.
+  - If user approves, keep store minimal and typed.
+- API calls must go through a typed client in `frontend/src/lib/apiClient.ts`.
+- All API payloads/responses must have TypeScript types in `frontend/src/types/`.
+
+Loading/empty/error:
+- Every data-driven screen must have loading, empty, and error states.
+- Prefer skeletons for loading lists/cards.
+
+Formatting:
+- Use shared utilities for date/currency display in `frontend/src/lib/format.ts`.
+- Do not do money math with floats; treat numbers as display only and rely on backend for calculations.

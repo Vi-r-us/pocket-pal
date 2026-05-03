@@ -78,7 +78,7 @@ const fetchCategoryGroup = async (userId, categoryGroupId) => {
         {
           model: Category,
           as: "categories",
-          attributes: ["category_id", "name", "group_id"],
+          attributes: ["category_id", "name", "group_id", "icon_key"],
           where: { [Op.or]: [{ user_id: null }, { user_id: userId }] },
           required: false, // LEFT JOIN so group is returned even when it has no matching categories
         },
@@ -126,10 +126,16 @@ const createCategoryGroup = async (userId, categoryGroupData) => {
       throw new ApiError(409, "Category group with the same name and type already exists");
     }
 
-    const newCategoryGroup = await CategoryGroup.create({
-      ...categoryGroupData,
+    const createPayload = {
+      name: categoryGroupData.name,
+      type: categoryGroupData.type,
       user_id: userId,
-    });
+    };
+    if (Object.prototype.hasOwnProperty.call(categoryGroupData, "icon_key")) {
+      createPayload.icon_key = categoryGroupData.icon_key;
+    }
+
+    const newCategoryGroup = await CategoryGroup.create(createPayload);
 
     logger.info(`Created new category group with ID: ${newCategoryGroup.group_id}\n`);
 

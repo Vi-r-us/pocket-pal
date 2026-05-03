@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { VALID_TRANSACTION_TYPES, VALID_TRANSACTION_SOURCES } from "../constants/constants.js";
+import { VALID_TRANSACTION_TYPES, VALID_TRANSACTION_TYPE_INPUTS, VALID_TRANSACTION_SOURCES } from "../constants/constants.js";
 
 /** Schema for creating a transaction. Currency comes from account if not provided. */
 const createTransactionSchema = Joi.object({
@@ -21,7 +21,7 @@ const createTransactionSchema = Joi.object({
   type: Joi.string()
     .lowercase()
     .trim()
-    .valid(...VALID_TRANSACTION_TYPES)
+    .valid(...VALID_TRANSACTION_TYPE_INPUTS)
     .required()
     .messages({
       "any.only": `Type must be one of: ${VALID_TRANSACTION_TYPES.join(", ")}`,
@@ -54,7 +54,7 @@ const fetchTransactionsSchema = Joi.object({
   type: Joi.string()
     .lowercase()
     .trim()
-    .valid(...VALID_TRANSACTION_TYPES)
+    .valid(...VALID_TRANSACTION_TYPE_INPUTS)
     .optional()
     .messages({
       "any.only": `Type must be one of: ${VALID_TRANSACTION_TYPES.join(", ")}`,
@@ -67,13 +67,54 @@ const fetchTransactionsSchema = Joi.object({
     .messages({
       "any.only": `Source must be one of: ${VALID_TRANSACTION_SOURCES.join(", ")}`,
     }),
+  amount_min: Joi.number().integer().optional().messages({
+    "number.base": "amount_min must be a number",
+    "number.integer": "amount_min must be an integer",
+  }),
+  amount_max: Joi.number().integer().optional().messages({
+    "number.base": "amount_max must be a number",
+    "number.integer": "amount_max must be an integer",
+  }),
+  q: Joi.string().trim().max(120).optional().messages({
+    "string.max": "Search query must be at most 120 characters",
+  }),
   date_from: Joi.date().optional().messages({
     "date.base": "date_from must be a valid date",
   }),
   date_to: Joi.date().optional().messages({
     "date.base": "date_to must be a valid date",
   }),
-}).options({ convert: true });
+  page: Joi.number().integer().min(1).optional().default(1).messages({
+    "number.base": "page must be a number",
+    "number.integer": "page must be an integer",
+    "number.min": "page must be at least 1",
+  }),
+  limit: Joi.number().integer().min(1).max(100).optional().default(20).messages({
+    "number.base": "limit must be a number",
+    "number.integer": "limit must be an integer",
+    "number.min": "limit must be at least 1",
+    "number.max": "limit must be at most 100",
+  }),
+  sort_by: Joi.string().trim().valid("timestamp", "amount_minor").optional().default("timestamp").messages({
+    "any.only": "sort_by must be one of: timestamp, amount_minor",
+  }),
+  sort_order: Joi.string().trim().lowercase().valid("asc", "desc").optional().default("desc").messages({
+    "any.only": "sort_order must be one of: asc, desc",
+  }),
+})
+  .custom((value, helpers) => {
+    if (value.date_from && value.date_to && new Date(value.date_from) > new Date(value.date_to)) {
+      return helpers.error("any.invalid", { message: "date_from must be less than or equal to date_to" });
+    }
+    if (value.amount_min != null && value.amount_max != null && value.amount_min > value.amount_max) {
+      return helpers.error("any.invalid", { message: "amount_min must be less than or equal to amount_max" });
+    }
+    return value;
+  })
+  .messages({
+    "any.invalid": "{{#message}}",
+  })
+  .options({ convert: true });
 
 /** Used for get-one, update, delete: ?id= (transaction_id). */
 const transactionIdQuerySchema = Joi.object({

@@ -1,0 +1,16 @@
+---
+description: "Accessibility (keyboard + aria + focus) requirements (frontend/)."
+globs: "frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js,frontend/**/*.jsx"
+alwaysApply: false
+---
+
+Accessibility is mandatory:
+- Use `<button>` for actions and `<a>` for navigation.
+- If a non-interactive element is clickable, it must include:
+  - `role="button"`
+  - `tabIndex={0}`
+  - `aria-label`
+  - `onClick` and `onKeyDown` handlers (Enter/Space)
+- Provide visible focus styles using focus-visible rings.
+- Inputs must have a label (Label component or aria-label).
+- Dialogs/menus must use Radix/shadcn components for correct aria behavior.

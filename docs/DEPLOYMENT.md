@@ -14,6 +14,70 @@ Use this checklist now that **Neon** (Postgres) and **Render** (API) are created
 
 **Rule of thumb:** Neon supplies **Postgres**; Render runs the **API** and holds **server secrets**; GitHub only needs **deploy hook URLs** (optional); the **browser-facing** API URL goes in the **frontend** host env for build-time config.
 
+---
+
+## Render: Environment Groups vs per-service env, and “Secret”
+
+Render lets you attach variables at different levels:
+
+| Mechanism | What it is | When to use for PocketPal |
+|-----------|------------|---------------------------|
+| **Environment variables** (plain) | Key/value visible in the dashboard (value can still be sensitive—treat carefully). | Non-secret config: `NODE_ENV`, `LOG_LEVEL`, `CORS_ORIGIN` (origin URL is not secret). |
+| **Secret** / **Secret environment variables** | Same idea but values are **hidden** in the UI after save (treat as sensitive). | **`DATABASE_URL`**, **`ACCESS_TOKEN_SECRET`**, **`REFRESH_TOKEN_SECRET`**, **Cloudinary keys**. Always use secret-type for these. |
+| **Secret files** | A file mounted at runtime (e.g. for TLS certs or multi-line keys). | Usually **not** needed for PocketPal; a single `DATABASE_URL` string is enough. |
+| **Environment Groups** | A named bundle of variables you **link** to one or more services so they share the same keys. | Use for values **identical** across services (e.g. shared `CLOUDINARY_*` if both staging and prod use the same Cloudinary account—often you still split by folder). **Do not** put one shared `DATABASE_URL` in a group if staging and prod use **different** Neon branches—use **per-service** `DATABASE_URL` or two groups (`pocketpal-staging`, `pocketpal-prod`). |
+
+**Practical split for PocketPal**
+
+- **Group (optional):** e.g. naming convention, `LOG_LEVEL`, or shared third-party keys **only** if truly the same in staging and prod.
+- **Per Web Service:** `DATABASE_URL` (different Neon branch per service), `CORS_ORIGIN` (different frontend URL per env), JWT secrets (can be same or different per env—many teams use **different** secrets for staging vs prod).
+
+---
+
+## Connect Neon to Render: `DATABASE_URL` — where it comes from and what to put
+
+Neon does **not** run your Node app. You only need the **Postgres connection string** on Render.
+
+1. Open the **[Neon Console](https://console.neon.tech)** → your project.
+2. Select the **branch** you use for that environment (e.g. `main` / production vs a **preview** or second branch for staging).
+3. Open **Connection details** (or **Dashboard** → connect / SQL editor area—Neon’s UI shows “Connection string”).
+4. Choose **PostgreSQL** and copy the URI. It looks like:
+   `postgresql://USER:PASSWORD@EP-xxx.region.aws.neon.tech/neondb?sslmode=require`
+5. In **Render** → your **Web Service** (staging or prod) → **Environment** → add:
+   - **Key:** `DATABASE_URL`
+   - **Value:** paste that full string
+   - Mark it as a **Secret** if Render offers that toggle.
+
+Repeat for the **other** Render service with the **other** Neon branch’s connection string (staging DB → staging service, prod DB → prod service).
+
+Your app reads **`process.env.DATABASE_URL`** in `backend/src/db/sequelize.js` and `backend/src/db/pool.js`. You do **not** need separate `DB_HOST` / `DB_USER` on Render when `DATABASE_URL` is set.
+
+---
+
+## GitHub: Render deploy hooks — what they are and how to get the URLs
+
+**Deploy hooks** are **HTTPS URLs** that tell Render: “start a new deploy for this service.” They are **not** your database URL and **not** your API URL.
+
+**Why use them:** Optional GitHub Actions workflows (e.g. `.github/workflows/backend-deploy.yml`) can `curl` these URLs after a push so a deploy runs without storing Render login tokens in GitHub.
+
+**How to create (one per Web Service)**
+
+1. **Render** → select the **Web Service** (e.g. staging API).
+2. **Settings** → **Deploy Hook** (or **Build & Deploy** → Deploy hook—wording varies).
+3. Create a hook, give it a name (e.g. `github-staging`).
+4. Render shows a URL like: `https://api.render.com/deploy/srv-xxxxx?key=yyyyy`
+5. Copy that **entire URL**.
+
+**Put in GitHub**
+
+1. Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+2. Name: `RENDER_DEPLOY_HOOK_STAGING` → paste the **staging** service hook URL.
+3. Repeat: `RENDER_DEPLOY_HOOK_PRODUCTION` → **production** service hook URL.
+
+These URLs are **sensitive** (anyone with the URL can trigger a deploy). Store them only as **GitHub Secrets**, not in the repo.
+
+If you **don’t** use GitHub Actions to trigger deploys, you can skip GitHub secrets entirely and rely on Render’s **auto-deploy on push** to the connected branch.
+
 ## Render Web Service (backend)
 
 | Setting | Value |

@@ -1,0 +1,29 @@
+---
+description: "Security and production-readiness guidelines for PocketPal backend."
+globs: "backend/src/**/*.js"
+alwaysApply: false
+---
+
+# Backend: Security + Production Readiness
+
+## Auth + cookies
+- Keep JWTs in `HttpOnly` cookies.
+- Set `secure: true` only when behind HTTPS.
+- Prefer `sameSite: "Lax"` for typical web apps unless you have strict requirements.
+
+## Input hardening
+- Validate and normalize all user input.
+- Sanitize any file uploads (limits + MIME checking).
+
+## Sensitive data
+- Never log or return secrets.
+- Prefer storing external IDs (`public_id`) in URLs instead of internal numeric IDs.
+
+## Defensive middleware (recommended additions)
+- Add `helmet` for common HTTP security headers.
+- Add rate limiting (e.g., login/refresh endpoints) to reduce brute force risk.
+- Consider CSRF protection if relying on cookies for auth.
+
+## DB safety
+- Avoid `sequelize.sync({ alter: true })` in production.
+- Use migrations + seed scripts in CI/CD.

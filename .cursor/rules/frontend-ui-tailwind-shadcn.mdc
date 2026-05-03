@@ -1,0 +1,23 @@
+---
+description: "Tailwind + shadcn/ui + Radix UI standards (frontend/)."
+globs: "frontend/src/components/**/*.ts,frontend/src/components/**/*.tsx,frontend/src/components/**/*.js,frontend/src/components/**/*.jsx,frontend/src/features/**/*.ts,frontend/src/features/**/*.tsx,frontend/src/features/**/*.js,frontend/src/features/**/*.jsx,frontend/src/pages/**/*.ts,frontend/src/pages/**/*.tsx,frontend/src/pages/**/*.js,frontend/src/pages/**/*.jsx"
+alwaysApply: false
+---
+
+UI rules:
+- Use Tailwind utility classes only.
+- Prefer shadcn/ui components (Button, Card, Input, Dialog, DropdownMenu, Tabs, Table).
+- Use Radix via shadcn for accessibility and behavior.
+- Maintain consistent spacing (8px rhythm): gap-2/4/6/8, p-4/6/8.
+- Keep visuals readable over flashy.
+
+Glassmorphism theme rules:
+- Use glass sparingly: header, KPI cards, drawers/modals.
+- Dense surfaces (tables/forms) should be more opaque for readability.
+- Ensure contrast meets accessibility (no low-contrast text on glass).
+- Support dark mode with Tailwind dark: variants.
+
+Component rules:
+- Props must be typed.
+- Keep components small and composable.
+- Avoid prop drilling for app-wide state; propose a store only if needed (ask first).

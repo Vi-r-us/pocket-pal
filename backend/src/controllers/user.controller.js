@@ -21,6 +21,8 @@ import {
   validateUserIdParam,
 } from "../validators/user.validation.js";
 
+const isSecureCookie = process.env.NODE_ENV === "production";
+
 const registerUser = asyncHandler(async (req, res) => {
   const { error, value } = validateRegister(req.body);
   if (error) {
@@ -50,8 +52,7 @@ const loginUser = asyncHandler(async (req, res) => {
   // Cookie options
   const options = {
     httpOnly: true,
-    // secure: process.env.NODE_ENV === "production",
-    secure: true,
+    secure: isSecureCookie,
     sameSite: "Strict",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   };
@@ -61,7 +62,7 @@ const loginUser = asyncHandler(async (req, res) => {
     .status(200)
     .cookie("accessToken", loggedInUser.accessToken, options)
     .cookie("refreshToken", loggedInUser.refreshToken, options)
-    .json(new ApiResponse(200, loggedInUser, "User logged in successfully"));
+    .json(new ApiResponse(200, { user: loggedInUser.user }, "User logged in successfully"));
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
@@ -73,8 +74,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   // Clear cookies
   const clearOptions = {
     httpOnly: true,
-    // secure: process.env.NODE_ENV === "production",
-    secure: true,
+    secure: isSecureCookie,
     sameSite: "Strict",
   };
 
@@ -97,8 +97,7 @@ const refreshTokens = asyncHandler(async (req, res) => {
   // Cookie options
   const options = {
     httpOnly: true,
-    // secure: process.env.NODE_ENV === "production",
-    secure: true,
+    secure: isSecureCookie,
     sameSite: "Strict",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   };
@@ -108,7 +107,7 @@ const refreshTokens = asyncHandler(async (req, res) => {
     .status(200)
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
-    .json(new ApiResponse(200, accessToken, "Access token refreshed successfully"));
+    .json(new ApiResponse(200, { refreshed: true }, "Access token refreshed successfully"));
 });
 
 // Resolve :id to current user id; only "me" is allowed (validated by validateUserIdParam).
