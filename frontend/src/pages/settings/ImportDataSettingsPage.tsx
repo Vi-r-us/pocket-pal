@@ -30,7 +30,7 @@ const IMPORT_TYPE_OPTIONS: Array<{ value: ImportType; label: string; description
   {
     value: "budgets",
     label: "Budgets",
-    description: "Import monthly category budgets using YYYYMM format.",
+    description: "Import monthly category budgets using YYYYMM format.", 
   },
   {
     value: "categories",
