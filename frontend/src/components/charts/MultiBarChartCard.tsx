@@ -143,7 +143,7 @@ export const MultiBarChartCard = ({
               {showTooltip ? (
                 <ChartTooltip
                   cursor={false}
-                  content={<ChartTooltipContent formatter={tooltipValueFormatter} indicator="dashed" />}
+                  content={<ChartTooltipContent formatter={tooltipValueFormatter}  />}
                 />
               ) : null}
               {showLegend ? (
