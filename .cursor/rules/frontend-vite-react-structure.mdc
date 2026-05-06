@@ -1,0 +1,21 @@
+---
+description: "Vite + React project conventions and placement (frontend/)."
+globs: "frontend/**/*.ts,frontend/**/*.tsx,frontend/**/*.js,frontend/**/*.jsx"
+alwaysApply: false
+---
+
+Project rules:
+- This is React (Vite), not Next.js. Do not use Next-specific patterns (layout.tsx, server components, metadata exports).
+- Prefer feature-based architecture:
+  - `frontend/src/pages/` for route-level screens
+  - `frontend/src/features/` for domain logic + UI
+  - `frontend/src/components/` for reusable components
+  - `frontend/src/lib/` for utilities and shared helpers
+  - `frontend/src/types/` for shared TypeScript types
+
+Routing:
+- If routing is required, ask the user before adding react-router.
+- If routing is not required, keep it as a single-page view with internal tabs/sections.
+
+Data fetching:
+- Prefer using native fetch with a thin wrapper in `frontend/src/lib/apiClient.ts` unless user approves axios.

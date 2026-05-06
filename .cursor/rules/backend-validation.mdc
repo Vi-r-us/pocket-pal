@@ -1,0 +1,27 @@
+---
+description: "Validation + sanitization conventions (Joi validators, error messages, normalization)."
+globs: "backend/src/validators/**/*.js,backend/src/controllers/**/*.js,backend/src/utils/sanitize.js"
+alwaysApply: false
+---
+
+# Backend: Validation + Sanitization
+
+## Validation (Joi)
+- Put schemas and helper functions in `backend/src/validators/*`.
+- Export validator functions like `validateCreateX(data)` that return Joi `{ error, value }`.
+- Use `{ abortEarly: false }` so you can report multiple validation errors at once.
+
+## Controllers
+- Validate request data **before** calling services.
+- On validation failure:
+  - Build a user-friendly message from `error.details`.
+  - Throw `new ApiError(400, "Validation error: ...")`.
+
+## Normalization rules
+- Strings: `trim()` always.
+- Emails: lowercase.
+- Titles (category/group names): store consistently using `capitalizeTitleCase()` from `backend/src/utils/sanitize.js`.
+
+## Security
+- Never accept or log password/token fields unintentionally.
+- When logging request bodies, redact sensitive keys (`password`, `refreshToken`, etc.).

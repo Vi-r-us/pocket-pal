@@ -1,0 +1,37 @@
+---
+description: "Express routing/controller/middleware conventions for PocketPal backend."
+globs: "backend/src/app.js,backend/src/routes/**/*.js,backend/src/controllers/**/*.js,backend/src/middlewares/**/*.js"
+alwaysApply: false
+---
+
+# Backend: Express Conventions
+
+## Routes
+- Keep routes **thin**: only HTTP method + path + middleware + controller.
+- Prefer `router.route("/path").get(...).post(...)` when multiple verbs share a path.
+- Keep API prefixing consistent: routes are mounted under `/api/v1/*` in `backend/src/app.js`.
+
+## Controllers
+- Controllers:
+  - Validate inputs (prefer Joi validators in `backend/src/validators`).
+  - Call a service function.
+  - Return `ApiResponse`.
+  - Throw `ApiError` on validation/permission failures.
+- Do not call Sequelize models directly from controllers unless the project already does so for that specific feature.
+
+## Middlewares
+- Use `verifyJWT` for authenticated endpoints.
+- Do not swallow errors inside middleware; throw `ApiError` or pass error to `next(err)`.
+
+## HTTP semantics
+- Prefer **query params** for GET filters (`?type=expense`) rather than request bodies.
+  - If an existing endpoint currently reads from `req.body` on GET, keep it backward compatible.
+
+## Cookies (auth)
+- Cookies should be `httpOnly: true`.
+- `secure: true` should only be enabled when running behind HTTPS (production).
+- Use `sameSite` intentionally (Strict/Lax) based on cross-site needs.
+
+## Error handling
+- Let errors bubble to the global error handler in `app.js`.
+- Never send stack traces to the client in production.

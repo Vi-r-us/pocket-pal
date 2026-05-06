@@ -1,0 +1,60 @@
+---
+description: "PocketPal project context + global conventions (backend + frontend)."
+globs: ""
+alwaysApply: true
+---
+
+# PocketPal (Project Context)
+
+You are working in **PocketPal**, a personal finance app.
+
+## Current repository layout
+- Root contains `backend/` (Node.js/Express + Postgres + Sequelize) and `frontend/` (React + Vite + TypeScript).
+- Backend code lives in `backend/src/`. Frontend code lives in `frontend/src/` (and related `frontend/` config).
+- Both apps use **ES Modules** (`"type": "module"` in each `package.json`). Use `import`/`export`.
+
+## Formatting scope (do not mix)
+- **Backend** formatting follows `backend/.prettierrc` (including semicolons).
+- **Frontend** code under `frontend/` follows the frontend Cursor rules (no semicolons, Tailwind-first, etc.). See `.cursor/rules/frontend-context.mdc` and related `frontend-*.mdc` files.
+
+## Backend architecture conventions (follow existing code)
+- **Routes**: `backend/src/routes/*.routes.js` (Express Router only).
+- **Controllers**: `backend/src/controllers/*.controller.js`
+  - Use `asyncHandler` from `backend/src/middlewares/asyncHandler.js`.
+  - Return `ApiResponse` for success responses.
+  - Throw `ApiError` for client-facing errors.
+- **Services**: `backend/src/services/*.service.js`
+  - Business logic + DB access.
+  - No `req`/`res` usage inside services.
+  - Use `handleServerError(err, message, status)` to wrap unknown errors.
+- **Models**: `backend/src/models/*.model.js`
+  - Sequelize `Model.init(...)` with `underscored: true` and explicit `tableName`.
+  - Define associations via `Model.associate = (models) => { ... }`.
+- **Validators**: `backend/src/validators/*.validation.js` using **Joi**.
+
+## API responses and errors
+- Success: `return res.status(X).json(new ApiResponse(X, data, message))`.
+- Errors: throw `new ApiError(statusCode, message, errors?)`.
+- Do **not** return HTML error pages; API returns JSON.
+- Never include secrets in responses or logs (passwords, tokens, API keys).
+
+## Auth conventions
+- JWT auth via `verifyJWT` middleware (`backend/src/middlewares/auth.middleware.js`).
+- `verifyJWT` attaches `req.user` (safe plain object).
+- Use `req.user.user_id` as the internal DB identifier.
+- Prefer exposing `public_id` externally (never expose `user_id` in API payloads/URLs unless explicitly required).
+
+## Logging conventions
+- Use `pino` logger (`backend/src/utils/logger.js`) and request logger middleware (`backend/src/middlewares/requestLogger.js`).
+- Prefer structured logs: `logger.info({ userId, ... }, "message")`.
+- For business/audit history, use `createLog(...)` (`backend/src/services/log.service.js`).
+- Never store sensitive values in logs.
+
+## Formatting / style (backend)
+- For `backend/` only: follow Prettier in `backend/.prettierrc`:
+  - `printWidth: 120`, `tabWidth: 2`, `semi: true`, `singleQuote: false`.
+- Prefer descriptive names and small modules.
+
+## Change policy
+- Prefer additive changes that do not break existing API behavior.
+- If a change would be breaking, provide a backward-compatible path (support old + new for one release).

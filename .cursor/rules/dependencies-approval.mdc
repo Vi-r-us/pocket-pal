@@ -1,0 +1,22 @@
+---
+description: "Dependency approval gate (ask before adding npm packages)."
+globs: ""
+alwaysApply: true
+---
+
+Dependency rule (STRICT):
+- Do not add any new npm dependency without asking the user first.
+Examples: axios, zustand, react-router-dom, react-query/tanstack-query, date-fns, zod, framer-motion, etc.
+
+Applies to **both** `backend/` and `frontend/` package manifests.
+
+When a new library might help:
+1) Ask the user explicitly for approval BEFORE writing code that imports it.
+2) Provide:
+   - Why it is needed
+   - Alternatives using existing tools (native fetch, useState/useReducer, etc.)
+   - Tradeoffs (bundle size, complexity)
+   - Exact files that will change
+
+If the user says no:
+- Implement using existing dependencies.

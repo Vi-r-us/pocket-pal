@@ -1,0 +1,14 @@
+---
+description: "Commit message conventions (Conventional Commits)."
+globs: ""
+alwaysApply: true
+---
+
+Commit message rules:
+- Format: `<type>[optional scope]: <description>`
+- Types: feat, fix, chore, docs, style, refactor, perf, test
+- Subject line:
+  - imperative mood
+  - no trailing period
+- Scope optional but recommended (example: `feat(accounts): add account list screen`)
+- Body optional; explain what/why, not how.

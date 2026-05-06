@@ -1,0 +1,41 @@
+---
+description: "Sequelize models/DB conventions: naming, associations, seeds, migrations."
+globs: "backend/src/models/**/*.js,backend/src/db/**/*.js,backend/src/seeders/**/*.cjs"
+alwaysApply: false
+---
+
+# Backend: Sequelize + DB Conventions
+
+## Model definition pattern
+- Use the established pattern:
+  - `class ModelName extends Model {}`
+  - `ModelName.init({ ... }, { underscored: true, tableName: ..., ... })`
+  - `ModelName.associate = (models) => { ... }`
+- Prefer explicit `createdAt`/`updatedAt` mappings when `timestamps: true`.
+
+## Naming
+- Use **snake_case** for DB columns and model attributes (consistent with `underscored: true`).
+  - Example: `user_id`, `category_id`, `group_id`.
+- Do not mix in camelCase properties like `categoryId` unless the model attribute is actually defined that way.
+
+## Associations
+- Always define `as` aliases consistently with existing code:
+  - Category: `{ as: "group" }`, `{ as: "user" }`
+  - CategoryGroup: `{ as: "categories" }`
+- When writing queries with `include`, use the correct `as` value.
+
+## Seeds
+- Seeders live in `backend/src/seeders/*.cjs` (CommonJS) for compatibility with `sequelize-cli`.
+- Seeders should be **idempotent**:
+  - check existing rows before inserting (avoid duplicates)
+  - never delete user-owned data in `down()` beyond what the seeder created
+
+## Migrations vs sync()
+- `sequelize.sync({ alter: true })` is acceptable in development only.
+- For production/staging: use **migrations** via `sequelize-cli`.
+  - Do not add new tables/columns by relying on `sync({ alter: true })`.
+
+## Performance
+- Add indexes for:
+  - all FK columns (`user_id`, `category_id`, etc.)
+  - common query filters (`type`, `created_at`, `(user_id, type)` etc.)

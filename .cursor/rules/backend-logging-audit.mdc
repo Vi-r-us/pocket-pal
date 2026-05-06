@@ -1,0 +1,25 @@
+---
+description: "Logging + audit log conventions (pino, requestId, logs table)."
+globs: "backend/src/utils/logger.js,backend/src/middlewares/requestLogger.js,backend/src/services/log.service.js,backend/src/models/log.model.js"
+alwaysApply: false
+---
+
+# Backend: Logging + Audit Logs
+
+## Application logs (pino)
+- Use the shared pino instance (`backend/src/utils/logger.js`).
+- Prefer structured logs: `logger.info({ requestId, userId, ... }, "message")`.
+- Use request-scoped logger when available (`req.log`) and include `req.requestId`.
+
+## Audit/business logs (logs table)
+- Use `createLog(...)`.
+- Do not store:
+  - passwords
+  - JWTs (access/refresh tokens)
+  - Plaid access tokens
+  - Cloudinary secrets
+- Keep JSON fields small; truncate large blobs.
+
+## Error logging
+- Let the global error handler in `backend/src/app.js` handle responses.
+- Log unexpected errors with context: `{ err, requestId, method, path, user }`.

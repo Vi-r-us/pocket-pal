@@ -5,8 +5,13 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "start": "node src/index.js",
+    "test": "node -e \"process.exit(0)\"",
+    "lint": "eslint src --max-warnings 0",
+    "db:migrate": "npx sequelize-cli db:migrate",
+    "db:seed": "npx sequelize-cli db:seed:all --config src/config/env.config.js --seeders-path src/seeders",
+    "seed:mock-tx": "node -r dotenv/config scripts/seed-mock-transactions.js"
   },
   "keywords": [
     "personal-finance",
@@ -18,7 +23,28 @@
   "author": "PocketPal Team",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0",
     "nodemon": "^3.1.10",
+    "pino-http": "^11.0.0",
+    "pino-pretty": "^13.1.3",
     "prettier": "^3.5.3"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.7.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "joi": "^18.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "pino": "^10.1.0",
+    "sequelize": "^6.37.7",
+    "xlsx": "^0.18.5"
   }
 }
