@@ -9,6 +9,7 @@ import transactionRoutes from "./routes/transaction.routes.js";
 import budgetRoutes from "./routes/budget.routes.js";
 import goalRoutes from "./routes/goal.routes.js";
 import healthRoutes from "./routes/health.routes.js";
+import importRoutes from "./routes/import.routes.js";
 import ApiResponse from "./utils/ApiResponse.js";
 import logger from "./utils/logger.js";
 import requestLogger from "./middlewares/requestLogger.js";
@@ -89,6 +90,7 @@ app.use("/api/v1/transactions", transactionRoutes);
 app.use("/api/v1/budgets", budgetRoutes);
 app.use("/api/v1/goals", goalRoutes);
 app.use("/api/v1/health", healthRoutes);
+app.use("/api/v1/import", importRoutes);
 
 // Global error handler (all failures)
 // This middleware handles errors that occur in the application

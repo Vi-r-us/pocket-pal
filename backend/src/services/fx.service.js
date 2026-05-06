@@ -34,6 +34,7 @@ async function fetchFromFrankfurter(fromCurrency, toCurrency, date) {
 
 /**
  * Get or create an identity rate row (same currency -> same currency, rate 1).
+ * Reuses one canonical identity row across dates to avoid unnecessary duplication.
  * @param {string} currency
  * @param {string} asOfDate - YYYY-MM-DD
  * @returns {Promise<FXRate>}
@@ -43,8 +44,8 @@ async function getOrCreateIdentityRate(currency, asOfDate) {
     where: {
       base_currency: currency,
       target_currency: currency,
-      as_of_date: asOfDate,
     },
+    order: [["as_of_date", "ASC"]],
   });
   if (existing) return existing;
 
@@ -52,7 +53,7 @@ async function getOrCreateIdentityRate(currency, asOfDate) {
     where: {
       base_currency: currency,
       target_currency: currency,
-      as_of_date: asOfDate,
+      as_of_date: asOfDate || "1970-01-01",
     },
     defaults: {
       rate: 1,

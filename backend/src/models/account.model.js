@@ -25,6 +25,17 @@ const defineAccountModel = (sequelize) => {
         references: { model: "currencies", key: "code" },
       },
       balance_minor: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+      opening_balance_minor: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+      credit_limit_minor: { type: DataTypes.BIGINT, allowNull: true },
+      statement_day: { type: DataTypes.SMALLINT, allowNull: true },
+      payment_due_day: { type: DataTypes.SMALLINT, allowNull: true },
+
+      institution_name: { type: DataTypes.STRING(120), allowNull: true },
+      account_number_last4: { type: DataTypes.STRING(4), allowNull: true },
+      notes: { type: DataTypes.TEXT, allowNull: true },
+      icon_key: { type: DataTypes.STRING(64), allowNull: true },
+      display_order: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+      include_in_net_worth: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
 
       is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     },
@@ -38,6 +49,7 @@ const defineAccountModel = (sequelize) => {
       updatedAt: "updated_at",
       indexes: [
         { fields: ["user_id"], name: "idx_accounts_user_id" },
+        { fields: ["user_id", "display_order"], name: "idx_accounts_user_display_order" },
         { unique: true, fields: ["user_id", "name"], name: "uq_accounts_user_name" },
       ],
     }

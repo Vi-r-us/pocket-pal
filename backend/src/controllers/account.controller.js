@@ -17,7 +17,8 @@ import {
 
 /**
  * GET /accounts
- * Returns all accounts for the user. Optional query filters: type, is_active.
+ * Returns paginated accounts for the user.
+ * Optional query filters: type, is_active, q, page, limit, sort_by, sort_order.
  */
 const getAccounts = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
@@ -51,7 +52,9 @@ const getAccount = asyncHandler(async (req, res) => {
 
 /**
  * POST /accounts
- * Creates a new account. Body: { name, type, currency_code }. currency_code must exist in Currency model.
+ * Creates a new account.
+ * Body: { name, type, currency_code, ...optional metadata fields }.
+ * currency_code must exist in Currency model.
  */
 const createAccount = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
@@ -68,7 +71,7 @@ const createAccount = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /accounts/:id
- * Updates a user-owned account. Body: { name?, type?, currency_code?, is_active? } (at least one required).
+ * Updates a user-owned account. Body accepts account fields from update validator (at least one required).
  */
 const updateAccount = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;

@@ -8,6 +8,7 @@ let flushTimer = null;
 const FLUSH_INTERVAL_MS = Number(process.env.LOG_BATCH_INTERVAL_MS) || 2000; // 2s
 const FLUSH_BATCH_SIZE = Number(process.env.LOG_BATCH_SIZE) || 100;
 const MAX_JSON_SIZE = 10 * 1024; // 10KB per JSON field
+const MAX_DB_VARCHAR_LEN = 50;
 
 function sanitizeObject(obj) {
   try {
@@ -18,6 +19,13 @@ function sanitizeObject(obj) {
   } catch {
     return { _error: "unable_to_serialize" };
   }
+}
+
+function truncateVarchar(value, maxLen = MAX_DB_VARCHAR_LEN) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value);
+  if (normalized.length <= maxLen) return normalized;
+  return normalized.slice(0, maxLen);
 }
 
 async function flushQueue() {
@@ -92,10 +100,10 @@ const createLog = async (params) => {
     log_id: params.log_id || uuidv4(),
     user_id: params.user_id || null,
     log_type: params.log_type,
-    action: params.action || null,
-    entity: params.entity || null,
-    entity_id: params.entity_id ? String(params.entity_id) : null,
-    field_name: params.field_name || null,
+    action: truncateVarchar(params.action),
+    entity: truncateVarchar(params.entity),
+    entity_id: params.entity_id ? truncateVarchar(params.entity_id) : null,
+    field_name: truncateVarchar(params.field_name),
     old_value: sanitizeObject(params.old_value) || null,
     new_value: sanitizeObject(params.new_value) || null,
     message: params.message || null,

@@ -128,6 +128,23 @@ const transactionIdQuerySchema = Joi.object({
 
 /** Used for PATCH: only safe fields; at least one required. */
 const updateTransactionSchema = Joi.object({
+  account_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "Account ID must be a number",
+  }),
+  amount_minor: Joi.number().integer().optional().messages({
+    "number.base": "Amount (minor units) must be a number",
+  }),
+  currency: Joi.string().trim().uppercase().length(3).optional().messages({
+    "string.length": "Currency code must be 3 characters",
+  }),
+  type: Joi.string()
+    .lowercase()
+    .trim()
+    .valid(...VALID_TRANSACTION_TYPE_INPUTS)
+    .optional()
+    .messages({
+      "any.only": `Type must be one of: ${VALID_TRANSACTION_TYPES.join(", ")}`,
+    }),
   description: Joi.string().trim().allow("").optional(),
   metadata: Joi.object().optional(),
   source: Joi.string()

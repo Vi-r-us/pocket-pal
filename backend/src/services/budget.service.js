@@ -160,6 +160,60 @@ async function getBudgetMonth(userId, yyyyMm) {
 }
 
 /**
+ * DELETE a single category budget for a month.
+ */
+async function deleteBudgetCategory(userId, yyyyMm, categoryId) {
+  logger.info({ userId, yyyyMm, categoryId }, "deleteBudgetCategory called");
+
+  if (userId == null) {
+    throw new ApiError(400, "User ID is required");
+  }
+
+  try {
+    const period = await BudgetPeriod.findOne({
+      where: { user_id: userId, yyyy_mm: yyyyMm },
+      attributes: ["budget_period_id"],
+    });
+
+    if (!period) {
+      throw new ApiError(404, "No budget period found for this month");
+    }
+
+    const deletedCount = await Budget.destroy({
+      where: {
+        budget_period_id: period.budget_period_id,
+        category_id: categoryId,
+      },
+    });
+
+    if (!deletedCount) {
+      throw new ApiError(404, "Budget category not found for this month");
+    }
+
+    await createLog({
+      user_id: userId,
+      log_type: "audit",
+      action: "budget_delete_success",
+      entity: "budget",
+      entity_id: `${yyyyMm}:${categoryId}`,
+    });
+
+    return await getBudgetMonth(userId, yyyyMm);
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    await createLog({
+      user_id: userId,
+      log_type: "audit",
+      action: "budget_delete_fail",
+      entity: "budget",
+      entity_id: `${yyyyMm}:${categoryId}`,
+      message: err?.message?.slice(0, 200),
+    });
+    throw handleServerError(err, "Error deleting budget category", 500);
+  }
+}
+
+/**
  * GET budget vs spent per category + totals.
  * Handles FX conversion for transactions with different base_currency.
  */
@@ -193,7 +247,7 @@ async function getBudgetSummary(userId, yyyyMm) {
     if (!period) {
       return {
         summaries: [],
-        totals: { budget_minor: 0, spent_minor: 0, currency_code: null },
+        totals: { budget_minor: 0, spent_minor: 0, savings_minor: 0, remaining_minor: 0, currency_code: null },
         yyyy_mm: yyyyMm,
       };
     }
@@ -201,24 +255,42 @@ async function getBudgetSummary(userId, yyyyMm) {
     const { startDate, endDate, asOfDate } = parseYyyyMm(yyyyMm);
     const budgetCurrency = period.currency_code;
     const budgetCurrencyRow = await Currency.findByPk(budgetCurrency);
+    const currencyMinorUnitCache = new Map();
+    currencyMinorUnitCache.set(budgetCurrency, budgetCurrencyRow?.minor_unit ?? 2);
+
+    const getMinorUnit = async (currencyCode) => {
+      if (currencyMinorUnitCache.has(currencyCode)) {
+        return currencyMinorUnitCache.get(currencyCode);
+      }
+      const row = await Currency.findByPk(currencyCode);
+      const minorUnit = row?.minor_unit ?? 2;
+      currencyMinorUnitCache.set(currencyCode, minorUnit);
+      return minorUnit;
+    };
 
     const transactions = await Transaction.findAll({
       where: {
         user_id: userId,
         timestamp: { [Op.between]: [startDate, endDate] },
-        type: { [Op.in]: ["expense", "withdrawal", "savings"] },
+        type: { [Op.in]: ["expense", "income", "savings"] },
       },
-      attributes: ["category_id", "base_currency", "amount_base_minor"],
+      attributes: ["category_id", "base_currency", "amount_base_minor", "type"],
       raw: true,
     });
 
     const spentByCategory = {};
+    const savingsByCurrency = {};
     for (const tx of transactions) {
       const catId = tx.category_id;
       if (!spentByCategory[catId]) spentByCategory[catId] = {};
       const curr = tx.base_currency;
       if (!spentByCategory[catId][curr]) spentByCategory[catId][curr] = 0;
       spentByCategory[catId][curr] += Number(tx.amount_base_minor);
+
+      if (tx.type === "savings") {
+        if (!savingsByCurrency[curr]) savingsByCurrency[curr] = 0;
+        savingsByCurrency[curr] += Number(tx.amount_base_minor);
+      }
     }
 
     const summaries = [];
@@ -238,11 +310,11 @@ async function getBudgetSummary(userId, yyyyMm) {
           spentMinor += amountMinor;
         } else {
           const rate = await getOrFetchRate(curr, budgetCurrency, asOfDate);
-          const currRow = await Currency.findByPk(curr);
+          const fromMinorUnit = await getMinorUnit(curr);
           const converted = convertAmount(
             amountMinor,
             rate.rate,
-            currRow?.minor_unit ?? 2,
+            fromMinorUnit,
             budgetCurrencyRow?.minor_unit ?? 2
           );
           spentMinor += converted;
@@ -260,11 +332,29 @@ async function getBudgetSummary(userId, yyyyMm) {
       });
     }
 
+    let totalSavings = 0;
+    for (const [curr, amountMinor] of Object.entries(savingsByCurrency)) {
+      if (curr === budgetCurrency) {
+        totalSavings += amountMinor;
+      } else {
+        const rate = await getOrFetchRate(curr, budgetCurrency, asOfDate);
+        const fromMinorUnit = await getMinorUnit(curr);
+        const converted = convertAmount(
+          amountMinor,
+          rate.rate,
+          fromMinorUnit,
+          budgetCurrencyRow?.minor_unit ?? 2
+        );
+        totalSavings += converted;
+      }
+    }
+
     return {
       summaries,
       totals: {
         budget_minor: totalBudget,
         spent_minor: totalSpent,
+        savings_minor: totalSavings,
         remaining_minor: totalBudget - totalSpent,
         currency_code: budgetCurrency,
       },
@@ -276,4 +366,4 @@ async function getBudgetSummary(userId, yyyyMm) {
   }
 }
 
-export { putBudgetMonth, getBudgetMonth, getBudgetSummary };
+export { putBudgetMonth, getBudgetMonth, getBudgetSummary, deleteBudgetCategory };

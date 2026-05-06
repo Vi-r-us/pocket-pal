@@ -1,6 +1,7 @@
 import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
+import { Op } from "sequelize";
 import { Account, Currency } from "../models/index.js";
 import { createLog } from "./log.service.js";
 import getState from "../utils/logUtils.js";
@@ -8,13 +9,13 @@ import getState from "../utils/logUtils.js";
 const currencyInclude = { model: Currency, as: "currency", attributes: ["code", "name", "symbol", "minor_unit"] };
 
 /**
- * Fetches accounts for a user. Optional filters: type, is_active.
+ * Fetches accounts for a user. Optional filters + pagination: type, is_active, q, page, limit, sort_by, sort_order.
  * @param {number} userId
- * @param {Object} params - { type?, is_active? }
+ * @param {Object} params - { type?, is_active?, q?, page?, limit?, sort_by?, sort_order? }
  */
 const fetchAccounts = async (userId, params = {}) => {
-  const { type, is_active } = params || {};
-  logger.info({ userId, type, is_active }, "fetchAccounts called");
+  const { type, is_active, q, page, limit, sort_by, sort_order } = params || {};
+  logger.info({ userId, type, is_active, q, page, limit, sort_by, sort_order }, "fetchAccounts called");
 
   if (userId === undefined || userId === null || userId === "") {
     throw new ApiError(400, "User ID is required");
@@ -28,20 +29,66 @@ const fetchAccounts = async (userId, params = {}) => {
     if (is_active !== undefined && is_active !== null) {
       whereClause.is_active = is_active;
     }
-
-    const accounts = await Account.findAll({
-      where: whereClause,
-      include: [currencyInclude],
-      order: [["name", "ASC"]],
-    });
-
-    if (!accounts) {
-      logger.warn({ userId }, "No accounts found");
-      return [];
+    if (q && q.trim()) {
+      const query = `%${q.trim()}%`;
+      whereClause[Op.or] = [
+        { name: { [Op.iLike]: query } },
+        { institution_name: { [Op.iLike]: query } },
+        { account_number_last4: { [Op.iLike]: query } },
+      ];
     }
 
-    logger.info({ userId, count: accounts.length }, "Fetched accounts");
-    return accounts;
+    const sortableColumns = {
+      name: "name",
+      type: "type",
+      balance_minor: "balance_minor",
+      display_order: "display_order",
+      created_at: "created_at",
+      updated_at: "updated_at",
+    };
+    const hasPagination = page != null || limit != null;
+    const hasCustomSort = !!sort_by || !!sort_order;
+
+    if (!hasPagination && !hasCustomSort) {
+      const accounts = await Account.findAll({
+        where: whereClause,
+        include: [currencyInclude],
+        order: [
+          ["display_order", "ASC"],
+          ["name", "ASC"],
+        ],
+      });
+      logger.info({ userId, count: accounts.length }, "Fetched accounts (non-paginated)");
+      return accounts;
+    }
+
+    const normalizedPage = Math.max(Number(page) || 1, 1);
+    const normalizedLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    const offset = (normalizedPage - 1) * normalizedLimit;
+    const sortColumn = sortableColumns[sort_by] || "display_order";
+    const sortDirection = String(sort_order).toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+    const { rows, count } = await Account.findAndCountAll({
+      where: whereClause,
+      include: [currencyInclude],
+      order: [
+        [sortColumn, sortDirection],
+        ["name", "ASC"],
+      ],
+      limit: normalizedLimit,
+      offset,
+      distinct: true,
+    });
+
+    const totalPages = count > 0 ? Math.ceil(count / normalizedLimit) : 0;
+    logger.info({ userId, count: rows.length, total: count }, "Fetched accounts (paginated)");
+    return {
+      items: rows,
+      page: normalizedPage,
+      limit: normalizedLimit,
+      total: count,
+      totalPages,
+    };
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw handleServerError(error, "Error fetching accounts", 500);
@@ -101,12 +148,26 @@ const createAccount = async (userId, data) => {
       throw new ApiError(409, "Account with the same name already exists");
     }
 
+    const normalizedOpeningBalance = Number.isFinite(Number(data.opening_balance_minor))
+      ? Number(data.opening_balance_minor)
+      : 0;
+
     const newAccount = await Account.create({
       name: data.name,
       type: data.type,
       currency_code: data.currency_code,
-      balance_minor: 0,
-      is_active: true,
+      balance_minor: normalizedOpeningBalance,
+      opening_balance_minor: normalizedOpeningBalance,
+      institution_name: data.institution_name || null,
+      account_number_last4: data.account_number_last4 || null,
+      notes: data.notes || null,
+      include_in_net_worth: data.include_in_net_worth ?? true,
+      display_order: data.display_order ?? 0,
+      icon_key: data.icon_key || null,
+      credit_limit_minor: data.credit_limit_minor ?? null,
+      statement_day: data.statement_day ?? null,
+      payment_due_day: data.payment_due_day ?? null,
+      is_active: data.is_active ?? true,
       user_id: userId,
     });
 
@@ -160,9 +221,15 @@ const updateAccount = async (userId, accountId, updateData) => {
       }
     }
 
-    const previousState = getState(account, updateData);
-    await account.update(updateData);
-    const newState = getState(account, updateData);
+    const normalizedUpdateData = { ...updateData };
+    if (normalizedUpdateData.institution_name === "") normalizedUpdateData.institution_name = null;
+    if (normalizedUpdateData.account_number_last4 === "") normalizedUpdateData.account_number_last4 = null;
+    if (normalizedUpdateData.notes === "") normalizedUpdateData.notes = null;
+    if (normalizedUpdateData.icon_key === "") normalizedUpdateData.icon_key = null;
+
+    const previousState = getState(account, normalizedUpdateData);
+    await account.update(normalizedUpdateData);
+    const newState = getState(account, normalizedUpdateData);
 
     logger.info({ userId, accountId }, "Account updated");
 
@@ -176,7 +243,7 @@ const updateAccount = async (userId, accountId, updateData) => {
       details: { source: "account.service.updateAccount" },
       old_value: previousState,
       new_value: newState,
-      field_name: Object.keys(updateData).join(", "),
+      field_name: Object.keys(normalizedUpdateData).join(", "),
     });
 
     return account;

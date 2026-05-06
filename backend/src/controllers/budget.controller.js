@@ -3,6 +3,7 @@ import {
   putBudgetMonth as putBudgetMonthService,
   getBudgetMonth as getBudgetMonthService,
   getBudgetSummary as getBudgetSummaryService,
+  deleteBudgetCategory as deleteBudgetCategoryService,
 } from "../services/budget.service.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -77,4 +78,27 @@ const getBudgetSummary = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, result, "Budget summary fetched successfully"));
 });
 
-export { putBudgetMonth, getBudgetMonth, getBudgetSummary };
+/**
+ * DELETE /budgets/month/:yyyyMm/category/:categoryId
+ * Delete one category budget row for the month.
+ */
+const deleteBudgetCategory = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+
+  const paramValidation = validateYyyyMmParam(req.params.yyyyMm);
+  if (paramValidation.error) {
+    const messages = paramValidation.error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${messages}`);
+  }
+  const yyyyMm = parseInt(paramValidation.value, 10);
+
+  const categoryId = Number(req.params.categoryId);
+  if (!Number.isInteger(categoryId) || categoryId <= 0) {
+    throw new ApiError(400, "Validation error: categoryId must be a positive integer");
+  }
+
+  const result = await deleteBudgetCategoryService(userId, yyyyMm, categoryId);
+  return res.status(200).json(new ApiResponse(200, result, "Budget deleted successfully"));
+});
+
+export { putBudgetMonth, getBudgetMonth, getBudgetSummary, deleteBudgetCategory };

@@ -45,6 +45,12 @@ function getTypeWhereClause(type) {
   return normalizedType;
 }
 
+function getBalanceDelta(type, amountMinor) {
+  const normalizedType = normalizeTransactionType(type);
+  const amount = Number(amountMinor) || 0;
+  return normalizedType === "expense" ? -amount : amount;
+}
+
 function buildTransactionsWhere(userId, params = {}) {
   const { account_id, category_id, type, source, date_from, date_to, amount_min, amount_max, q } = params || {};
 
@@ -415,28 +421,112 @@ async function updateTransaction(userId, transactionId, data) {
       throw new ApiError(404, "Transaction not found");
     }
 
-    if (data.category_id !== undefined) {
-      const category = await Category.findOne({
-        where: {
-          category_id: data.category_id,
-          [Op.or]: [{ user_id: null }, { user_id: userId }],
-        },
-      });
-      if (!category) {
-        throw new ApiError(404, "Category not found");
-      }
+    const currentAccount = await Account.findOne({
+      where: { account_id: transaction.account_id, user_id: userId },
+    });
+    if (!currentAccount) {
+      throw new ApiError(404, "Current account not found");
     }
+
+    const nextAccountId = data.account_id ?? transaction.account_id;
+    const nextAccount = await Account.findOne({
+      where: { account_id: nextAccountId, user_id: userId },
+    });
+    if (!nextAccount) {
+      throw new ApiError(404, "Account not found");
+    }
+
+    const nextType = normalizeTransactionType(data.type ?? transaction.type);
+    const nextCategoryId = data.category_id ?? transaction.category_id;
+    const nextCategory = await Category.findOne({
+      where: {
+        category_id: nextCategoryId,
+        [Op.or]: [{ user_id: null }, { user_id: userId }],
+      },
+    });
+    if (!nextCategory) {
+      throw new ApiError(404, "Category not found");
+    }
+    if (nextCategory.type && normalizeTransactionType(nextCategory.type) !== nextType) {
+      throw new ApiError(400, "Selected category type does not match transaction type");
+    }
+
+    const nextAmountMinor = data.amount_minor ?? transaction.amount_minor;
+    const nextTimestamp = data.timestamp ?? transaction.timestamp;
+    const nextCurrency = (
+      data.currency ??
+      (data.account_id !== undefined ? nextAccount.currency_code : transaction.currency)
+    )
+      .toString()
+      .toUpperCase();
+    const currencyExists = await Currency.findByPk(nextCurrency);
+    if (!currencyExists) {
+      throw new ApiError(400, "Invalid currency code");
+    }
+
+    const shouldReprice =
+      data.amount_minor !== undefined ||
+      data.currency !== undefined ||
+      data.account_id !== undefined ||
+      data.type !== undefined ||
+      data.timestamp !== undefined;
 
     const allowed = {};
     if (data.description !== undefined) allowed.description = data.description;
     if (data.metadata !== undefined) allowed.metadata = data.metadata;
     if (data.source !== undefined) allowed.source = data.source;
-    if (data.category_id !== undefined) allowed.category_id = data.category_id;
     if (data.timestamp !== undefined) allowed.timestamp = data.timestamp;
 
+    if (data.account_id !== undefined) allowed.account_id = nextAccountId;
+    if (data.category_id !== undefined) allowed.category_id = nextCategoryId;
+    if (data.amount_minor !== undefined) allowed.amount_minor = nextAmountMinor;
+    if (data.type !== undefined) allowed.type = nextType;
+    if (data.currency !== undefined || data.account_id !== undefined) allowed.currency = nextCurrency;
+
+    if (shouldReprice) {
+      const baseCurrency = await resolveBaseCurrency(userId, nextAccount.currency_code);
+      const asOfDate = new Date(nextTimestamp).toISOString().slice(0, 10);
+      const fxRate = await getOrFetchRate(nextCurrency, baseCurrency, asOfDate);
+      const fromCurrencyRow = await Currency.findByPk(nextCurrency);
+      const baseCurrencyRow = await Currency.findByPk(baseCurrency);
+      const amountBaseMinor = computeAmountBaseMinor(
+        nextAmountMinor,
+        fxRate.rate,
+        fromCurrencyRow.minor_unit,
+        baseCurrencyRow.minor_unit
+      );
+
+      allowed.account_id = nextAccountId;
+      allowed.category_id = nextCategoryId;
+      allowed.amount_minor = nextAmountMinor;
+      allowed.currency = nextCurrency;
+      allowed.base_currency = baseCurrency;
+      allowed.amount_base_minor = amountBaseMinor;
+      allowed.fx_rate_id = fxRate.fx_rate_id;
+      allowed.type = nextType;
+      allowed.timestamp = nextTimestamp;
+    }
+
+    const oldDelta = getBalanceDelta(transaction.type, transaction.amount_minor);
+    const newDelta = shouldReprice ? getBalanceDelta(nextType, nextAmountMinor) : oldDelta;
+    if (currentAccount.account_id === nextAccount.account_id) {
+      const deltaDiff = newDelta - oldDelta;
+      if (deltaDiff !== 0) {
+        await currentAccount.increment("balance_minor", { by: deltaDiff });
+      }
+    } else {
+      await currentAccount.increment("balance_minor", { by: -oldDelta });
+      await nextAccount.increment("balance_minor", { by: newDelta });
+    }
+
     await transaction.update(allowed);
+    const updatedTransaction = await Transaction.findOne({
+      where: { transaction_id: transactionId, user_id: userId },
+      include: [accountInclude, fxRateInclude, categoryInclude],
+    });
+
     logger.info({ userId, transactionId }, "Transaction updated");
-    return transaction;
+    return mapTransactionDetailDTO(updatedTransaction);
   } catch (err) {
     if (err instanceof ApiError) throw err;
     throw handleServerError(err, "Error updating transaction", 500);
