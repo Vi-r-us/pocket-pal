@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { getInlineErrorMessage } from "@/lib/errors/normalize";
 import { resolveCategoryIcon } from "@/lib/categoryIcons";
 import { cn } from "@/lib/utils";
 import type {
@@ -31,22 +32,6 @@ import type {
 } from "@/types/category";
 import { Panel } from "@/components/layout/Panel";
 import { SettingsSectionShell } from "@/components/settings/SettingsSectionShell";
-
-const getApiErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof ApiError) {
-    if (typeof error.data === "string" && error.data.trim()) {
-      return error.data;
-    }
-    if (error.data && typeof error.data === "object") {
-      const message = (error.data as { message?: unknown }).message;
-      if (typeof message === "string" && message.trim()) {
-        return message;
-      }
-    }
-    return error.message;
-  }
-  return fallback;
-};
 
 const TYPE_LABELS: Record<CategoryType, string> = {
   income: "Income",
@@ -74,7 +59,7 @@ export const CategoriesSettingsPage = () => {
   });
 
   const fetchErrorBanner = loadError
-    ? getApiErrorMessage(
+    ? getInlineErrorMessage(
         loadError,
         "Could not load category groups. Try again.",
       )
@@ -142,7 +127,7 @@ export const CategoriesSettingsPage = () => {
       setCreateOpen(false);
     } catch (error) {
       setActionError(
-        getApiErrorMessage(error, "Could not create category group."),
+        getInlineErrorMessage(error, "Could not create category group."),
       );
     } finally {
       setCreating(false);
@@ -182,7 +167,7 @@ export const CategoriesSettingsPage = () => {
       setEditOpen(false);
     } catch (error) {
       setActionError(
-        getApiErrorMessage(error, "Could not update category group."),
+        getInlineErrorMessage(error, "Could not update category group."),
       );
     } finally {
       setSavingEdit(false);
@@ -202,7 +187,7 @@ export const CategoriesSettingsPage = () => {
       setDeleteTarget(null);
     } catch (error) {
       setActionError(
-        getApiErrorMessage(error, "Could not delete category group."),
+        getInlineErrorMessage(error, "Could not delete category group."),
       );
     } finally {
       setDeleting(false);

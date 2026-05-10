@@ -1,3 +1,5 @@
+import type { ApiEnvelope } from '@/types/api'
+
 export type AccountType = "bank" | "cash" | "savings" | "credit_card"
 
 export type AccountSortBy = "name" | "type" | "balance_minor" | "display_order" | "created_at" | "updated_at"
@@ -67,9 +69,4 @@ export type UpsertAccountPayload = {
   is_active?: boolean
 }
 
-export type ApiSuccess<T> = {
-  statusCode: number
-  data: T
-  message: string
-  success: boolean
-}
+export type ApiSuccess<T> = ApiEnvelope<T>

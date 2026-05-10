@@ -51,15 +51,10 @@ import {
   APP_HEADER_PRIMARY_ACTION_EVENT,
   type AppHeaderPrimaryActionDetail,
 } from "@/constants/headerActions";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { getInlineErrorMessage } from "@/lib/errors/normalize";
 import { cn } from "@/lib/utils";
-
-type ApiSuccess<T> = {
-  statusCode: number;
-  data: T;
-  message: string;
-  success: boolean;
-};
+import type { ApiEnvelope } from "@/types/api";
 
 type BudgetSummaryData = {
   summaries: Array<{
@@ -160,18 +155,6 @@ const toCurrency = (minor: number | string, currency: string) => {
   return getCurrencyFormatter(currency).format(toMinorNumber(minor) / 100);
 };
 
-const getApiErrorMessage = (error: unknown, fallbackMessage: string) => {
-  if (!(error instanceof ApiError)) return fallbackMessage;
-  if (typeof error.data === "string" && error.data.trim()) return error.data;
-
-  if (error.data && typeof error.data === "object") {
-    const message = (error.data as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return message;
-  }
-
-  return error.message || fallbackMessage;
-};
-
 const BudgetMetricsLoading = () => {
   return (
     <>
@@ -221,7 +204,7 @@ export const BudgetsPage = () => {
       setMetricsError("");
 
       try {
-        const response = await api.get<ApiSuccess<BudgetSummaryData>>(
+        const response = await api.get<ApiEnvelope<BudgetSummaryData>>(
           `/budgets/month/${selectedYyyyMm}/summary`,
         );
         // console.log("response", response)
@@ -231,7 +214,7 @@ export const BudgetsPage = () => {
         if (!isCurrent) return;
         setSummary(null);
         setMetricsError(
-          getApiErrorMessage(error, "Could not load budget metrics"),
+          getInlineErrorMessage(error, "Could not load budget metrics"),
         );
       } finally {
         if (isCurrent) setIsMetricsLoading(false);
@@ -506,7 +489,7 @@ export const BudgetsPage = () => {
 
     setIsDeletingBudget(true);
     try {
-      await api.delete<ApiSuccess<unknown>>(
+      await api.delete<ApiEnvelope<unknown>>(
         `/budgets/month/${selectedYyyyMm}/category/${budgetRowPendingDelete.category_id}`,
       );
       setIsDeleteDialogOpen(false);
@@ -514,7 +497,7 @@ export const BudgetsPage = () => {
       setRefreshKey((value) => value + 1);
     } catch (error) {
       setMetricsError(
-        getApiErrorMessage(error, "Could not delete budget category"),
+        getInlineErrorMessage(error, "Could not delete budget category"),
       );
     } finally {
       setIsDeletingBudget(false);

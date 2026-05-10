@@ -1,3 +1,5 @@
+import type { ApiEnvelope } from '@/types/api'
+
 export type TransactionType = "income" | "expense" | "savings"
 
 export type TransactionSource = "manual" | "recurring" | "transfer" | "external"
@@ -128,9 +130,4 @@ export type CategoryFilterOption = {
   is_active?: boolean
 }
 
-export type ApiSuccess<T> = {
-  statusCode: number
-  data: T
-  message: string
-  success: boolean
-}
+export type ApiSuccess<T> = ApiEnvelope<T>

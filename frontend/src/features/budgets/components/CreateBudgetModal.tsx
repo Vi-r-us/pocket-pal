@@ -13,15 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import { resolveCategoryIcon } from "@/lib/categoryIcons";
-
-type ApiSuccess<T> = {
-  statusCode: number;
-  data: T;
-  message: string;
-  success: boolean;
-};
+import { getInlineErrorMessage } from "@/lib/errors/normalize";
+import type { ApiEnvelope } from "@/types/api";
 
 type BudgetCategoryOption = {
   category_id: number;
@@ -100,16 +95,6 @@ const parseMajorAmountToMinor = (rawAmount: string) => {
   return Math.round(parsed * 100);
 };
 
-const toApiErrorMessage = (error: unknown, fallbackMessage: string) => {
-  if (!(error instanceof ApiError)) return fallbackMessage;
-  if (typeof error.data === "string" && error.data.trim()) return error.data;
-  if (error.data && typeof error.data === "object") {
-    const message = (error.data as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return message;
-  }
-  return error.message || fallbackMessage;
-};
-
 export const CreateBudgetModal = ({
   open,
   onOpenChange,
@@ -139,7 +124,7 @@ export const CreateBudgetModal = ({
       setIsLoadingCategories(true);
       try {
         const response =
-          await api.get<ApiSuccess<BudgetCategoryOption[]>>("/categories");
+          await api.get<ApiEnvelope<BudgetCategoryOption[]>>("/categories");
         if (!isCurrent) return;
         const nextOptions = [...response.data]
           .filter((item) => item.is_active ?? true)
@@ -148,7 +133,7 @@ export const CreateBudgetModal = ({
       } catch (error) {
         if (!isCurrent) return;
         setSubmitError(
-          toApiErrorMessage(
+          getInlineErrorMessage(
             error,
             "Could not load categories for budget setup",
           ),
@@ -268,13 +253,13 @@ export const CreateBudgetModal = ({
 
     setIsSubmitting(true);
     try {
-      await api.put<ApiSuccess<unknown>>(`/budgets/month/${yyyyMm}`, {
+      await api.put<ApiEnvelope<unknown>>(`/budgets/month/${yyyyMm}`, {
         categoryBudgets,
       });
       onSuccess(yyyyMm);
       onOpenChange(false);
     } catch (error) {
-      setSubmitError(toApiErrorMessage(error, "Could not save budget"));
+      setSubmitError(getInlineErrorMessage(error, "Could not save budget"));
     } finally {
       setIsSubmitting(false);
     }

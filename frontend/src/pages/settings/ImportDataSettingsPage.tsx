@@ -3,7 +3,8 @@ import { CheckCircle2, FileUp, ListChecks, MapPinned, Upload } from "lucide-reac
 import { Panel } from "@/components/layout/Panel"
 import { SettingsSectionShell } from "@/components/settings/SettingsSectionShell"
 import { Button } from "@/components/ui/button"
-import { ApiError, api } from "@/lib/api"
+import { api } from "@/lib/api"
+import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import type {
   ApiSuccess,
   ImportCommitRequest,
@@ -38,22 +39,6 @@ const IMPORT_TYPE_OPTIONS: Array<{ value: ImportType; label: string; description
     description: "Create category records with type and icon mapping.",
   },
 ]
-
-const getApiErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof ApiError) {
-    if (typeof error.data === "string" && error.data.trim()) {
-      return error.data
-    }
-    if (error.data && typeof error.data === "object") {
-      const message = (error.data as { message?: unknown }).message
-      if (typeof message === "string" && message.trim()) {
-        return message
-      }
-    }
-    return error.message
-  }
-  return fallback
-}
 
 const normalizeKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "")
 
@@ -150,7 +135,7 @@ export const ImportDataSettingsPage = () => {
       setFieldMapping(getAutoMappings(result))
       setStep("mapping")
     } catch (error) {
-      setParseError(getApiErrorMessage(error, "Could not parse file. Please check format and try again."))
+      setParseError(getInlineErrorMessage(error, "Could not parse file. Please check format and try again."))
     } finally {
       setIsParsing(false)
     }
@@ -179,7 +164,7 @@ export const ImportDataSettingsPage = () => {
       const response = await api.post<ApiSuccess<ImportCommitResponse>>("/import/commit", payload)
       setCommitResult(response.data)
     } catch (error) {
-      setCommitError(getApiErrorMessage(error, "Import failed. Please fix errors and retry."))
+      setCommitError(getInlineErrorMessage(error, "Import failed. Please fix errors and retry."))
     } finally {
       setIsImporting(false)
     }
