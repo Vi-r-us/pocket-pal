@@ -34,7 +34,7 @@ const buildUrl = (path: string): string => {
 
 const toApiError = (error: unknown): ApiError => {
   if (error instanceof ApiError) {
-    return error
+    return error 
   }
 
   if (error instanceof AxiosError) {
