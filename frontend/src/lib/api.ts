@@ -1,5 +1,6 @@
 import axios, { type AxiosRequestConfig } from 'axios'
 import { AppError } from '@/lib/errors/classes'
+import { resolveUserMessage } from '@/lib/errors/messages'
 import { toAppError } from '@/lib/errors/normalize'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { AppErrorShape, ErrorContext } from '@/lib/errors/types'
@@ -64,9 +65,35 @@ const buildUrl = (path: string): string => {
   return `${API_URL}${fullPath}`
 }
 
+const getBackendMessage = (data: unknown): string | undefined => {
+  if (typeof data === 'string' && data.trim()) {
+    return data.trim()
+  }
+
+  if (data && typeof data === 'object') {
+    const message = (data as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim()
+    }
+  }
+
+  return undefined
+}
+
 const toApiError = (error: unknown, context: ErrorContext = {}): ApiError => {
   if (error instanceof ApiError) {
-    return error
+    const backendMessage = getBackendMessage(error.data)
+    return new ApiError(error.status, error.message, error.data, {
+      ...error.shape,
+      userMessage:
+        backendMessage ||
+        error.shape.userMessage ||
+        resolveUserMessage({
+          kind: error.shape.kind,
+          status: error.status,
+          fallbackMessage: context.fallbackMessage,
+        }),
+    })
   }
 
   const appError = toAppError(error, { source: 'api', ...context })
@@ -123,7 +150,17 @@ const refreshSession = async (): Promise<boolean> => {
 
 const ensureOkResponse = <T>(status: number, data: T): T => {
   if (status < 200 || status >= 300) {
-    throw toApiError(new ApiError(status, `Request failed with status ${status}`, data))
+    const kind = status === 401 ? 'auth' : status === 400 || status === 422 ? 'validation' : 'http'
+    const backendMessage = getBackendMessage(data)
+    throw new ApiError(status, backendMessage || `Request failed with status ${status}`, data, {
+      source: 'api',
+      kind,
+      userMessage: resolveUserMessage({
+        kind,
+        status,
+        backendMessage,
+      }),
+    })
   }
 
   return data
