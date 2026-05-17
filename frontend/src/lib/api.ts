@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig } from 'axios'
+import { appEnv } from '@/config/env'
 import { AppError } from '@/lib/errors/classes'
 import { resolveUserMessage } from '@/lib/errors/messages'
 import { toAppError } from '@/lib/errors/normalize'
@@ -38,8 +39,8 @@ class ApiError extends AppError {
   }
 }
 
-const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
-const API_PREFIX = `/${(import.meta.env.VITE_API_PREFIX ?? 'api/v1').replaceAll(/^\/+|\/+$/g, '')}`
+const API_URL = appEnv.apiUrl
+const API_PREFIX = `/${appEnv.apiPrefix}`
 const authDebugPrefix = '[api-auth]'
 const authDebugStorageKey = '__auth_debug__'
 

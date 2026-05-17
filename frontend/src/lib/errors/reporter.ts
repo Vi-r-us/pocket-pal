@@ -1,10 +1,9 @@
+import { appEnv } from '@/config/env'
 import { toAppError } from '@/lib/errors/normalize'
 import type { ErrorContext } from '@/lib/errors/types'
 import { AppError } from '@/lib/errors/classes'
 
-export type ReportableError = AppError | Error | unknown
-
-export type ErrorReporter = (error: ReportableError, context?: ErrorContext) => void
+export type ErrorReporter = (error: unknown, context?: ErrorContext) => void
 
 export function sanitizeErrorForTransport(error: AppError): Record<string, unknown> {
   return {
@@ -27,12 +26,12 @@ export function createErrorReporter(): ErrorReporter {
     const appError = toAppError(error, context)
     const payload = sanitizeErrorForTransport(appError)
 
-    if (import.meta.env.DEV) {
+    if (appEnv.isDev) {
       console.error('[frontend-error]', payload)
       return
     }
 
-    const endpoint = (import.meta.env.VITE_ERROR_REPORT_URL ?? '').trim()
+    const endpoint = appEnv.errorReportUrl
     if (!endpoint) {
       console.error('[frontend-error]', payload)
       return
