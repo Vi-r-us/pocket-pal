@@ -267,6 +267,9 @@ export const AppShell = () => {
         setProfileLoadError("");
       } catch {
         if (!isActive) return;
+        console.warn("[app-shell] /users/me failed after route load", {
+          pathname: window.location.pathname,
+        });
         setProfileLoadError("Could not refresh profile");
       } finally {
         if (isActive) {

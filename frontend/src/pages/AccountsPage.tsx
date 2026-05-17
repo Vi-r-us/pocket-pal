@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { APP_HEADER_PRIMARY_ACTION_EVENT, type AppHeaderPrimaryActionDetail } from "@/constants/headerActions"
-import { ApiError, api } from "@/lib/api"
+import { api } from "@/lib/api"
+import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import { cn } from "@/lib/utils"
 import type {
   AccountListItem,
@@ -106,18 +107,6 @@ const formatSingleCurrencyTotal = (totals: CurrencyTotals) => {
   if (!total) return "—"
 
   return formatMinorAmount(total.amountMinor, code, total.minorUnit)
-}
-
-const getApiErrorMessage = (error: unknown, fallbackMessage: string) => {
-  if (!(error instanceof ApiError)) return fallbackMessage
-  if (typeof error.data === "string" && error.data.trim()) return error.data
-
-  if (error.data && typeof error.data === "object") {
-    const message = (error.data as { message?: unknown }).message
-    if (typeof message === "string" && message.trim()) return message
-  }
-
-  return error.message || fallbackMessage
 }
 
 const getCurrentMonthDateRange = () => {
@@ -318,7 +307,7 @@ export const AccountsPage = () => {
         setAccountsForMetrics(accountsResult.value.data)
       } else {
         setAccountsForMetrics([])
-        setMetricsError(getApiErrorMessage(accountsResult.reason, "Could not load account metrics"))
+        setMetricsError(getInlineErrorMessage(accountsResult.reason, "Could not load account metrics"))
       }
 
       if (summaryResult.status === "fulfilled") {
@@ -381,7 +370,7 @@ export const AccountsPage = () => {
         setTableRows([])
         setTotal(0)
         setTotalPages(0)
-        setTableError(getApiErrorMessage(error, "Could not load accounts table"))
+        setTableError(getInlineErrorMessage(error, "Could not load accounts table"))
       } finally {
         if (isCurrent) setIsTableLoading(false)
       }
@@ -474,7 +463,7 @@ export const AccountsPage = () => {
       await api.patch(`/accounts/${account.account_id}`, { is_active: !account.is_active })
       setRefreshKey((value) => value + 1)
     } catch (error) {
-      setTableError(getApiErrorMessage(error, "Could not update account status"))
+      setTableError(getInlineErrorMessage(error, "Could not update account status"))
     }
   }
 

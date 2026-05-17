@@ -1,3 +1,5 @@
+import type { ApiEnvelope } from '@/types/api'
+
 export type ImportType = 'transactions' | 'accounts' | 'budgets' | 'categories'
 
 export type ImportField = {
@@ -36,9 +38,4 @@ export type ImportCommitRequest = {
   }
 }
 
-export type ApiSuccess<T> = {
-  statusCode: number
-  data: T
-  message: string
-  success: boolean
-}
+export type ApiSuccess<T> = ApiEnvelope<T>

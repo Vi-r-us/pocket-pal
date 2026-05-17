@@ -21,7 +21,26 @@ import {
   validateUserIdParam,
 } from "../validators/user.validation.js";
 
-const isSecureCookie = process.env.NODE_ENV === "production";
+const isProduction = process.env.NODE_ENV === "production";
+const useCrossSiteAuthCookies = process.env.AUTH_COOKIE_CROSS_SITE === "true" || isProduction;
+
+const buildAuthCookieOptions = (withExpiry = false) => {
+  const baseOptions = {
+    httpOnly: true,
+    secure: useCrossSiteAuthCookies,
+    sameSite: useCrossSiteAuthCookies ? "None" : "Lax",
+    path: "/",
+  };
+
+  if (!withExpiry) {
+    return baseOptions;
+  }
+
+  return {
+    ...baseOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  };
+};
 
 const registerUser = asyncHandler(async (req, res) => {
   const { error, value } = validateRegister(req.body);
@@ -50,12 +69,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const loggedInUser = await loginUserService({ email, username, password });
 
   // Cookie options
-  const options = {
-    httpOnly: true,
-    secure: isSecureCookie,
-    sameSite: "Strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  };
+  const options = buildAuthCookieOptions(true);
 
   // Set refresh token and access token in HTTP-only cookie
   return res
@@ -72,11 +86,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   await logoutUserService(userId);
 
   // Clear cookies
-  const clearOptions = {
-    httpOnly: true,
-    secure: isSecureCookie,
-    sameSite: "Strict",
-  };
+  const clearOptions = buildAuthCookieOptions();
 
   return res
     .status(200)
@@ -95,12 +105,7 @@ const refreshTokens = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = await refreshTokensService(incomingRefreshToken);
 
   // Cookie options
-  const options = {
-    httpOnly: true,
-    secure: isSecureCookie,
-    sameSite: "Strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  };
+  const options = buildAuthCookieOptions(true);
 
   // Set refresh token and access token in HTTP-only cookie
   return res

@@ -15,7 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { api, ApiError } from "@/lib/api"
+import { api } from "@/lib/api"
+import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import { resolveCategoryIcon } from "@/lib/categoryIcons"
 import { cn } from "@/lib/utils"
 import type {
@@ -168,25 +169,6 @@ const parseMajorAmountToMinor = (rawAmount: string) => {
   const parsed = Number(normalized)
   if (!Number.isFinite(parsed) || parsed <= 0) return null
   return Math.round(parsed * 100)
-}
-
-const getApiErrorMessage = (error: unknown, fallbackMessage: string) => {
-  if (!(error instanceof ApiError)) {
-    return fallbackMessage
-  }
-
-  if (typeof error.data === "string" && error.data.trim()) {
-    return error.data
-  }
-
-  if (error.data && typeof error.data === "object") {
-    const message = (error.data as { message?: unknown }).message
-    if (typeof message === "string" && message.trim()) {
-      return message
-    }
-  }
-
-  return error.message || fallbackMessage
 }
 
 const getModalTitle = (mode: TransactionModalMode) => {
@@ -566,7 +548,7 @@ export const CreateTransactionModal = ({
       handleModalOpenChange(false)
     } catch (error) {
       setSubmitError(
-        getApiErrorMessage(error, mode === "edit" ? "Could not update transaction" : "Could not create transaction"),
+        getInlineErrorMessage(error, mode === "edit" ? "Could not update transaction" : "Could not create transaction"),
       )
     } finally {
       setIsSubmitting(false)

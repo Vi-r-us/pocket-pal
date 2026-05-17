@@ -1,3 +1,5 @@
+import type { ApiEnvelope } from '@/types/api'
+
 export type CategoryType = "income" | "expense" | "savings"
 
 export type CategoryGroupRow = {
@@ -8,9 +10,4 @@ export type CategoryGroupRow = {
   icon_key: string | null
 }
 
-export type ApiSuccess<T> = {
-  statusCode: number
-  data: T
-  message: string
-  success: boolean
-}
+export type ApiSuccess<T> = ApiEnvelope<T>

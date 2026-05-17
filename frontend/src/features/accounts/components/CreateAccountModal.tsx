@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IconKeyPicker } from "@/components/category/IconKeyPicker"
-import { ApiError, api } from "@/lib/api"
+import { api } from "@/lib/api"
+import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import { cn } from "@/lib/utils"
 import type { AccountListItem, AccountType, ApiSuccess, UpsertAccountPayload } from "@/types/account"
 
@@ -111,18 +112,6 @@ const parseMajorAmountToMinor = (rawAmount: string) => {
   const parsed = Number(normalized)
   if (!Number.isFinite(parsed) || parsed < 0) return null
   return Math.round(parsed * 100)
-}
-
-const toApiErrorMessage = (error: unknown, fallbackMessage: string) => {
-  if (!(error instanceof ApiError)) return fallbackMessage
-  if (typeof error.data === "string" && error.data.trim()) return error.data
-
-  if (error.data && typeof error.data === "object") {
-    const message = (error.data as { message?: unknown }).message
-    if (typeof message === "string" && message.trim()) return message
-  }
-
-  return error.message || fallbackMessage
 }
 
 export const CreateAccountModal = ({ open, onOpenChange, mode, account, onSuccess }: CreateAccountModalProps) => {
@@ -267,7 +256,7 @@ export const CreateAccountModal = ({ open, onOpenChange, mode, account, onSucces
       handleModalOpenChange(false)
       onSuccess()
     } catch (error) {
-      setSubmitError(toApiErrorMessage(error, "Could not save account"))
+      setSubmitError(getInlineErrorMessage(error, "Could not save account"))
     } finally {
       setIsSubmitting(false)
     }

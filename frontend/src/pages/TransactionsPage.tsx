@@ -18,8 +18,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { api, ApiError } from "@/lib/api"
+import { api } from "@/lib/api"
 import { APP_HEADER_PRIMARY_ACTION_EVENT, type AppHeaderPrimaryActionDetail } from "@/constants/headerActions"
+import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import { resolveCategoryIcon } from "@/lib/categoryIcons"
 import { cn } from "@/lib/utils"
 import { DEFAULT_ADVANCED_FILTERS } from "@/types/transaction"
@@ -74,18 +75,6 @@ const TYPE_AMOUNT_TEXT_CLASSES: Record<TransactionType, string> = {
 }
 
 const formatSourceLabel = (source: string) => source.charAt(0).toUpperCase() + source.slice(1)
-
-const getApiErrorMessage = (error: unknown, fallbackMessage: string) => {
-  if (!(error instanceof ApiError)) return fallbackMessage
-  if (typeof error.data === "string" && error.data.trim()) return error.data
-
-  if (error.data && typeof error.data === "object") {
-    const message = (error.data as { message?: unknown }).message
-    if (typeof message === "string" && message.trim()) return message
-  }
-
-  return error.message || fallbackMessage
-}
 
 const toIntegerOrNull = (value: string) => {
   const normalized = value.trim()
@@ -371,7 +360,7 @@ export const TransactionsPage = () => {
         setFilterOptionsError("")
       } catch (error) {
         if (!isCurrent) return
-        setFilterOptionsError(getApiErrorMessage(error, "Could not load filter options"))
+        setFilterOptionsError(getInlineErrorMessage(error, "Could not load filter options"))
       } finally {
         if (isCurrent) {
           setIsLoadingFilterOptions(false)
@@ -530,7 +519,7 @@ export const TransactionsPage = () => {
         }
       } catch (error) {
         if (!isCurrent) return
-        const message = error instanceof ApiError ? error.message : "Could not fetch transactions"
+        const message = getInlineErrorMessage(error, "Could not fetch transactions")
         setRows([])
         setTotal(0)
         setTotalPages(1)

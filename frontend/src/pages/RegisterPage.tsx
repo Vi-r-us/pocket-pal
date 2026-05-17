@@ -34,7 +34,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { ApiError, api } from "@/lib/api"
+import { api } from "@/lib/api"
+import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import { useAuthStore } from "@/stores/useAuthStore"
 
 const registerSchema = z
@@ -83,25 +84,6 @@ const registerFeatureItems = [
     icon: ChartColumnBig,
   },
 ]
-
-const getApiErrorMessage = (error: unknown) => {
-  if (error instanceof ApiError) {
-    if (typeof error.data === "string" && error.data.trim()) {
-      return error.data
-    }
-
-    if (error.data && typeof error.data === "object") {
-      const message = (error.data as { message?: unknown }).message
-      if (typeof message === "string" && message.trim()) {
-        return message
-      }
-    }
-
-    return error.message
-  }
-
-  return "Unable to sign up right now. Please try again."
-}
 
 const GoogleIcon = () => (
   <svg aria-hidden className="size-4 shrink-0" viewBox="0 0 24 24">
@@ -184,7 +166,7 @@ export const RegisterPage = () => {
       // toast.success("Account created successfully")
       navigate("/dashboard", { replace: true })
     } catch (error) {
-      setApiError(getApiErrorMessage(error))
+      setApiError(getInlineErrorMessage(error, "Unable to sign up right now. Please try again."))
     }
   }
 
