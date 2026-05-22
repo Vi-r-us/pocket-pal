@@ -47,6 +47,8 @@ export type CategoryBreakdownChartCardProps = {
   title?: ReactNode
   description?: ReactNode
   data: CategoryBreakdownDatum[]
+  headerAction?: ReactNode
+  palette?: string[]
   centerLabel?: string
   valueFormatter?: (value: number) => string
   percentFormatter?: (fraction: number) => string
@@ -71,11 +73,13 @@ export function CategoryBreakdownChartCard({
   title = "Category breakdown",
   description,
   data,
+  headerAction,
+  palette,
   centerLabel = "Total",
   valueFormatter = defaultValueFormatter,
   percentFormatter = defaultPercentFormatter,
-  innerRadius = 58,
-  outerRadius = 88,
+  innerRadius = 85,
+  outerRadius = 115,
   periodOptions,
   defaultPeriod,
   onPeriodChange,
@@ -102,7 +106,8 @@ export function CategoryBreakdownChartCard({
     }
 
     const rows = data.map((row, index) => {
-      const color = row.colorVar ?? DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length]
+      const paletteColor = palette?.[index % palette.length]
+      const color = row.colorVar ?? paletteColor ?? DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length]
       colors[row.key] = color
       config[row.key] = { label: row.label, color }
       return {
@@ -114,7 +119,7 @@ export function CategoryBreakdownChartCard({
     })
 
     return { total: sum, chartData: rows, chartConfig: config, keyColors: colors }
-  }, [data])
+  }, [data, palette])
 
   const hasRows = chartData.length > 0 && total > 0
   const shouldShowEmptyState = !hasRows
@@ -141,7 +146,9 @@ export function CategoryBreakdownChartCard({
           <CardTitle className="text-base font-medium">{title}</CardTitle>
           {description ? <CardDescription>{description}</CardDescription> : null}
         </div>
-        {periodList.length > 0 ? (
+        {headerAction ? (
+          <CardAction>{headerAction}</CardAction>
+        ) : periodList.length > 0 ? (
           <CardAction>
             <Select value={activePeriod} onValueChange={handlePeriodChange}>
               <SelectTrigger
@@ -199,8 +206,9 @@ export function CategoryBreakdownChartCard({
                     nameKey="label"
                     innerRadius={innerRadius}
                     outerRadius={outerRadius}
-                    strokeWidth={4}
-                    paddingAngle={2}
+                    strokeWidth={1}
+                    paddingAngle={1.5}
+                    cornerRadius={5}
                     stroke="var(--background)"
                   >
                     <Label

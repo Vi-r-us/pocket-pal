@@ -326,6 +326,7 @@ async function getBudgetSummary(userId, yyyyMm) {
         budget_id: budget.budget_id,
         category_id: catId,
         category: category,
+        category_type: category?.type ?? "expense",
         amount_minor: budgetAmount,
         spent_minor: spentMinor,
         remaining_minor: budgetAmount - spentMinor,

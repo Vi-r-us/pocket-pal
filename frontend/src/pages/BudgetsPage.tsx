@@ -65,6 +65,7 @@ type BudgetSummaryData = {
       name: string;
       type: string;
     } | null;
+    category_type?: string | null;
     amount_minor: number | string;
     spent_minor: number | string;
     remaining_minor: number | string;
@@ -99,7 +100,62 @@ type BudgetCategoryTableRow = {
   progress_percent_for_bar: number;
 };
 
+const BUDGET_CATEGORY_TYPES: BudgetCategoryType[] = [
+  "expense",
+  "income",
+  "savings",
+];
+
+const BUDGET_TYPE_PALETTES: Record<BudgetCategoryType, string[]> = {
+  expense: [
+    "#7F1D1D",
+    "#991B1B",
+    "#B91C1C",
+    "#DC2626",
+    "#EF4444",
+    "#FCA5A5",
+  ],
+  income: [
+    "#14532D",
+    "#166534",
+    "#15803D",
+    "#16A34A",
+    "#22C55E",
+    "#86EFAC",
+  ],
+  savings: [
+    "#312E81",
+    "#3730A3",
+    "#4338CA",
+    "#4F46E5",
+    "#6366F1",
+    "#A5B4FC",
+  ],
+};
+
+const BUDGET_BAR_SERIES_COLORS: Record<
+  BudgetCategoryType,
+  { budget: string; actual: string }
+> = {
+  expense: {
+    budget: "#7F1D1D",
+    actual: "#F87171",
+  },
+  income: {
+    budget: "#14532D",
+    actual: "#4ADE80",
+  },
+  savings: {
+    budget: "#312E81",
+    actual: "#818CF8",
+  },
+};
+
 const currencyFormatterCache = new Map<string, Intl.NumberFormat>();
+const compactAxisFormatter = new Intl.NumberFormat("en-IN", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 const getCurrentYyyyMm = () => {
   const now = new Date();
@@ -155,6 +211,13 @@ const toCurrency = (minor: number | string, currency: string) => {
   return getCurrencyFormatter(currency).format(toMinorNumber(minor) / 100);
 };
 
+const normalizeCategoryType = (value: string | null | undefined): BudgetCategoryType => {
+  if (value === "income" || value === "savings") {
+    return value;
+  }
+  return "expense";
+};
+
 const BudgetMetricsLoading = () => {
   return (
     <>
@@ -185,6 +248,10 @@ export const BudgetsPage = () => {
   const [budgetModalInitialRows, setBudgetModalInitialRows] = useState<
     Array<{ category_id: number; amount_minor: number }>
   >([]);
+  const [selectedBreakdownType, setSelectedBreakdownType] =
+    useState<BudgetCategoryType>("expense");
+  const [selectedBarType, setSelectedBarType] =
+    useState<BudgetCategoryType>("expense");
   const [categoryTypeFilter, setCategoryTypeFilter] =
     useState<BudgetCategoryFilterType>("all");
   const [tablePage, setTablePage] = useState(1);
@@ -301,49 +368,174 @@ export const BudgetsPage = () => {
     !metricsError &&
     (summary?.summaries.length ?? 0) === 0;
 
-  const spendBreakdownData: CategoryBreakdownDatum[] = (
-    summary?.summaries ?? []
-  )
-    .map((item) => ({
-      key: String(item.category_id),
-      label: item.category?.name?.trim() || "Uncategorized",
-      value: Math.max(0, toMinorNumber(item.spent_minor)),
-    }))
-    .filter((item) => item.value > 0);
+  const budgetSummariesWithType = useMemo(
+    () =>
+      (summary?.summaries ?? []).map((item) => ({
+        ...item,
+        normalized_type: normalizeCategoryType(
+          item.category_type ?? item.category?.type,
+        ),
+      })),
+    [summary?.summaries],
+  );
 
-  const allocationBreakdownData: CategoryBreakdownDatum[] = (
-    summary?.summaries ?? []
-  )
-    .map((item) => ({
-      key: String(item.category_id),
+  const breakdownCountsByType = useMemo(
+    () =>
+      BUDGET_CATEGORY_TYPES.reduce(
+        (acc, type) => {
+          const count = budgetSummariesWithType.filter(
+            (item) =>
+              item.normalized_type === type &&
+              Math.max(0, toMinorNumber(item.amount_minor)) > 0,
+          ).length;
+          acc[type] = count;
+          return acc;
+        },
+        { expense: 0, income: 0, savings: 0 } as Record<BudgetCategoryType, number>,
+      ),
+    [budgetSummariesWithType],
+  );
+
+  const availableBreakdownTypes = useMemo(
+    () =>
+      BUDGET_CATEGORY_TYPES.filter((type) => breakdownCountsByType[type] > 0),
+    [breakdownCountsByType],
+  );
+
+  const effectiveBreakdownType =
+    availableBreakdownTypes.includes(selectedBreakdownType)
+      ? selectedBreakdownType
+      : availableBreakdownTypes[0] ?? selectedBreakdownType;
+
+  const activeBudgetTypeSummaries = useMemo(
+    () =>
+      budgetSummariesWithType
+        .filter(
+          (item) =>
+            item.normalized_type === effectiveBreakdownType &&
+            Math.max(0, toMinorNumber(item.amount_minor)) > 0,
+        )
+        .sort(
+          (left, right) =>
+            Math.max(0, toMinorNumber(right.amount_minor)) -
+            Math.max(0, toMinorNumber(left.amount_minor)),
+        ),
+    [budgetSummariesWithType, effectiveBreakdownType],
+  );
+
+  const budgetBreakdownPalette = BUDGET_TYPE_PALETTES[effectiveBreakdownType];
+  const budgetBreakdownData = useMemo(() => {
+    const topFive = activeBudgetTypeSummaries.slice(0, 5);
+    const othersTotal = activeBudgetTypeSummaries
+      .slice(5)
+      .reduce((sum, item) => sum + Math.max(0, toMinorNumber(item.amount_minor)), 0);
+
+    const chartRows: CategoryBreakdownDatum[] = topFive.map((item, index) => ({
+      key: `${effectiveBreakdownType}-${item.category_id}`,
       label: item.category?.name?.trim() || "Uncategorized",
       value: Math.max(0, toMinorNumber(item.amount_minor)),
-    }))
-    .filter((item) => item.value > 0);
+      colorVar: budgetBreakdownPalette[index],
+    }));
 
-  const hasSpendBreakdown = spendBreakdownData.length > 0;
-  const budgetBreakdownData = hasSpendBreakdown
-    ? spendBreakdownData
-    : allocationBreakdownData;
-  const budgetVsActualData: BudgetVsActualDataPoint[] = (
-    summary?.summaries ?? []
-  )
-    .map((item) => ({
+    if (othersTotal > 0) {
+      chartRows.push({
+        key: `${effectiveBreakdownType}-others`,
+        label: "Others",
+        value: othersTotal,
+        colorVar: budgetBreakdownPalette[5],
+      });
+    }
+
+    return chartRows;
+  }, [
+    activeBudgetTypeSummaries,
+    budgetBreakdownPalette,
+    effectiveBreakdownType,
+  ]);
+
+  const breakdownTypeLabel =
+    effectiveBreakdownType.charAt(0).toUpperCase() +
+    effectiveBreakdownType.slice(1);
+  const hasBudgetBreakdownRows = budgetBreakdownData.length > 0;
+  const breakdownFooterNote = hasBudgetBreakdownRows
+    ? `Top 5 ${effectiveBreakdownType} budgets by allocation in ${monthLabel}`
+    : `No ${effectiveBreakdownType} budgets available for ${monthLabel}`;
+  const handleBreakdownTypeChange = (value: string) => {
+    if (
+      value !== "expense" &&
+      value !== "income" &&
+      value !== "savings"
+    ) {
+      return;
+    }
+    setSelectedBreakdownType(value);
+  };
+
+  const effectiveBarType = availableBreakdownTypes.includes(selectedBarType)
+    ? selectedBarType
+    : availableBreakdownTypes[0] ?? selectedBarType;
+
+  const handleBarTypeChange = (value: string) => {
+    if (
+      value !== "expense" &&
+      value !== "income" &&
+      value !== "savings"
+    ) {
+      return;
+    }
+    setSelectedBarType(value);
+  };
+
+  const budgetVsActualData: Array<BudgetVsActualDataPoint & { ranking_minor: number }> =
+    budgetSummariesWithType
+      .filter(
+        (item) =>
+          item.normalized_type === effectiveBarType &&
+          Math.max(0, toMinorNumber(item.amount_minor)) > 0,
+      )
+      .map((item) => ({
       category: item.category?.name?.trim() || "Uncategorized",
       budget_minor: Math.max(0, toMinorNumber(item.amount_minor)),
       actual_minor: Math.max(0, toMinorNumber(item.spent_minor)),
+      ranking_minor: Math.max(0, toMinorNumber(item.amount_minor)),
     }))
     .filter((item) => item.budget_minor > 0 || item.actual_minor > 0);
   const chartBarLimit = isMobileTableView ? 5 : isTabletTableView ? 8 : 12;
-  const limitedBudgetVsActualData = [...budgetVsActualData]
+  const sortedBudgetVsActualData = [...budgetVsActualData]
     .sort(
       (left, right) =>
-        Math.max(right.budget_minor, right.actual_minor) -
-        Math.max(left.budget_minor, left.actual_minor),
-    )
-    .slice(0, chartBarLimit);
+        right.ranking_minor - left.ranking_minor,
+    );
+  const topBudgetVsActualData = sortedBudgetVsActualData.slice(0, chartBarLimit);
+  const otherBudgetVsActualData = sortedBudgetVsActualData.slice(chartBarLimit);
+  const othersBarRow =
+    otherBudgetVsActualData.length > 0
+      ? {
+          category: "Others",
+          budget_minor: otherBudgetVsActualData.reduce(
+            (sum, item) => sum + item.budget_minor,
+            0,
+          ),
+          actual_minor: otherBudgetVsActualData.reduce(
+            (sum, item) => sum + item.actual_minor,
+            0,
+          ),
+        }
+      : null;
+  const limitedBudgetVsActualData: BudgetVsActualDataPoint[] = [
+    ...topBudgetVsActualData.map(({ category, budget_minor, actual_minor }) => ({
+      category,
+      budget_minor,
+      actual_minor,
+    })),
+    ...(othersBarRow ? [othersBarRow] : []),
+  ];
   const isBudgetVsActualTruncated =
-    budgetVsActualData.length > limitedBudgetVsActualData.length;
+    otherBudgetVsActualData.length > 0;
+  const barTypeLabel =
+    effectiveBarType.charAt(0).toUpperCase() +
+    effectiveBarType.slice(1);
+  const barSeriesColors = BUDGET_BAR_SERIES_COLORS[effectiveBarType];
   const categoryTableRows: BudgetCategoryTableRow[] = (summary?.summaries ?? [])
     .map((item) => {
       const budgetMinor = Math.max(0, toMinorNumber(item.amount_minor));
@@ -356,10 +548,9 @@ export const BudgetsPage = () => {
             ? 100
             : 0;
       const categoryTypeRaw = item.category?.type?.toLowerCase();
-      const categoryType: BudgetCategoryType =
-        categoryTypeRaw === "income" || categoryTypeRaw === "savings"
-          ? categoryTypeRaw
-          : "expense";
+      const categoryType = normalizeCategoryType(
+        item.category_type ?? categoryTypeRaw,
+      );
 
       return {
         category_id: item.category_id,
@@ -389,11 +580,10 @@ export const BudgetsPage = () => {
     (safeTablePage - 1) * tableLimit + tableLimit,
   );
 
-  const spentOfBudgetFraction =
-    totalBudgetMinor > 0 ? totalSpentMinor / totalBudgetMinor : 0;
-  const spentUtilizationLabel = `${Math.round(spentOfBudgetFraction * 100)}% of budget used`;
   const formatChartAmount = (value: string | number) =>
     currencyCode ? toCurrency(value, currencyCode) : "—";
+  const formatCompactAxisAmount = (value: string | number) =>
+    compactAxisFormatter.format(toMinorNumber(value) / 100);
   const formatProgressLabel = (progressPercent: number) =>
     `${progressPercent.toFixed(1)}%`;
 
@@ -418,66 +608,69 @@ export const BudgetsPage = () => {
     setTablePage(1);
   };
 
-  const handleCategoryAction = useCallback((
-    action: "edit" | "reset" | "delete",
-    row: BudgetCategoryTableRow,
-  ) => {
-    if (action === "edit") {
-      setBudgetModalMode("edit");
-      setBudgetModalInitialRows([
-        {
-          category_id: row.category_id,
-          amount_minor: row.budget_minor,
-        },
-      ]);
-      setBudgetModalKey((value) => value + 1);
-      setIsCreateBudgetModalOpen(true);
-      return;
-    }
-    if (action === "delete") {
-      setBudgetRowPendingDelete(row);
-      setIsDeleteDialogOpen(true);
-      return;
-    }
+  const handleCategoryAction = useCallback(
+    (action: "edit" | "reset" | "delete", row: BudgetCategoryTableRow) => {
+      if (action === "edit") {
+        setBudgetModalMode("edit");
+        setBudgetModalInitialRows([
+          {
+            category_id: row.category_id,
+            amount_minor: row.budget_minor,
+          },
+        ]);
+        setBudgetModalKey((value) => value + 1);
+        setIsCreateBudgetModalOpen(true);
+        return;
+      }
+      if (action === "delete") {
+        setBudgetRowPendingDelete(row);
+        setIsDeleteDialogOpen(true);
+        return;
+      }
 
-    console.info("[Budget Category Table Action]", {
-      action,
-      category_id: row.category_id,
-      category_name: row.category_name,
-    });
-  }, []);
+      console.info("[Budget Category Table Action]", {
+        action,
+        category_id: row.category_id,
+        category_name: row.category_name,
+      });
+    },
+    [],
+  );
 
-  const renderCategoryRowActions = useCallback((row: BudgetCategoryTableRow) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Open actions for ${row.category_name}`}
-        >
-          <MoreHorizontal className="size-4" aria-hidden />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onSelect={() => handleCategoryAction("edit", row)}>
-          <Pencil className="size-4" aria-hidden />
-          Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => handleCategoryAction("reset", row)}>
-          <RotateCcw className="size-4" aria-hidden />
-          Reset
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          variant="destructive"
-          onSelect={() => handleCategoryAction("delete", row)}
-        >
-          <Trash2 className="size-4" aria-hidden />
-          Delete budget
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ), [handleCategoryAction]);
+  const renderCategoryRowActions = useCallback(
+    (row: BudgetCategoryTableRow) => (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Open actions for ${row.category_name}`}
+          >
+            <MoreHorizontal className="size-4" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onSelect={() => handleCategoryAction("edit", row)}>
+            <Pencil className="size-4" aria-hidden />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => handleCategoryAction("reset", row)}>
+            <RotateCcw className="size-4" aria-hidden />
+            Reset
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => handleCategoryAction("delete", row)}
+          >
+            <Trash2 className="size-4" aria-hidden />
+            Delete budget
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ),
+    [handleCategoryAction],
+  );
 
   const handleBudgetModalSuccess = (nextYyyyMm: number) => {
     setSelectedYyyyMm(nextYyyyMm);
@@ -751,26 +944,63 @@ export const BudgetsPage = () => {
 
       <GridItem span={12} lgSpan={6} fill>
         <CategoryBreakdownChartCard
-          title={
-            hasSpendBreakdown
-              ? "Category Spend Breakdown"
-              : "Category Budget Allocation"
-          }
-          description={
-            hasSpendBreakdown
-              ? `Where your money went in ${monthLabel}`
-              : `How your budget is allocated in ${monthLabel}`
-          }
+          title="Category Budget Allocation"
+          description={`Top 5 ${effectiveBreakdownType} budgets for ${monthLabel}`}
           data={budgetBreakdownData}
-          centerLabel={hasSpendBreakdown ? "Total Spent" : "Total Budget"}
+          centerLabel={`${breakdownTypeLabel} Budget`}
+          headerAction={
+            <ToggleGroup
+              className="gap-2 rounded-lg"
+              type="single"
+              value={effectiveBreakdownType}
+              onValueChange={handleBreakdownTypeChange}
+            >
+              <ToggleGroupItem
+                value="expense"
+                aria-label="Expense budgets"
+                disabled={breakdownCountsByType.expense === 0}
+                className={cn(
+                  "!rounded-sm gap-2",
+                  effectiveBreakdownType === "expense"
+                    ? "bg-muted text-foreground"
+                    : "bg-transparent text-muted-foreground",
+                )}
+              >
+                Expense
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="income"
+                aria-label="Income budgets"
+                disabled={breakdownCountsByType.income === 0}
+                className={cn(
+                  "!rounded-sm gap-2",
+                  effectiveBreakdownType === "income"
+                    ? "bg-muted text-foreground"
+                    : "bg-transparent text-muted-foreground",
+                )}
+              >
+                Income
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="savings"
+                aria-label="Savings budgets"
+                disabled={breakdownCountsByType.savings === 0}
+                className={cn(
+                  "!rounded-sm gap-2",
+                  effectiveBreakdownType === "savings"
+                    ? "bg-muted text-foreground"
+                    : "bg-transparent text-muted-foreground",
+                )}
+              >
+                Savings
+              </ToggleGroupItem>
+            </ToggleGroup>
+          }
+          palette={budgetBreakdownPalette}
           valueFormatter={(value) =>
             currencyCode ? toCurrency(value, currencyCode) : "—"
           }
-          footerNote={
-            currencyCode
-              ? spentUtilizationLabel
-              : "Currency unavailable for this month"
-          }
+          footerNote={currencyCode ? breakdownFooterNote : "Currency unavailable for this month"}
           emptyMessage="No category budget data to display for this month"
         />
       </GridItem>
@@ -780,8 +1010,56 @@ export const BudgetsPage = () => {
           title="Budget vs Actual by Category"
           description={
             isBudgetVsActualTruncated
-              ? `Top ${limitedBudgetVsActualData.length} categories for ${monthLabel} based on value`
-              : `Planned and spent amounts for ${monthLabel}`
+              ? `Top ${topBudgetVsActualData.length} ${effectiveBarType} budgets with Others for ${monthLabel}`
+              : `Planned and spent ${effectiveBarType} budgets for ${monthLabel}`
+          }
+          headerAction={
+            <ToggleGroup
+              className="gap-2 rounded-lg"
+              type="single"
+              value={effectiveBarType}
+              onValueChange={handleBarTypeChange}
+            >
+              <ToggleGroupItem
+                value="expense"
+                aria-label="Expense bar chart"
+                disabled={breakdownCountsByType.expense === 0}
+                className={cn(
+                  "!rounded-sm gap-2",
+                  effectiveBarType === "expense"
+                    ? "bg-muted text-foreground"
+                    : "bg-transparent text-muted-foreground",
+                )}
+              >
+                Expense
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="income"
+                aria-label="Income bar chart"
+                disabled={breakdownCountsByType.income === 0}
+                className={cn(
+                  "!rounded-sm gap-2",
+                  effectiveBarType === "income"
+                    ? "bg-muted text-foreground"
+                    : "bg-transparent text-muted-foreground",
+                )}
+              >
+                Income
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="savings"
+                aria-label="Savings bar chart"
+                disabled={breakdownCountsByType.savings === 0}
+                className={cn(
+                  "!rounded-sm gap-2",
+                  effectiveBarType === "savings"
+                    ? "bg-muted text-foreground"
+                    : "bg-transparent text-muted-foreground",
+                )}
+              >
+                Savings
+              </ToggleGroupItem>
+            </ToggleGroup>
           }
           data={limitedBudgetVsActualData}
           xDataKey="category"
@@ -790,18 +1068,18 @@ export const BudgetsPage = () => {
             {
               key: "budget_minor",
               label: "Budget",
-              colorVar: "var(--chart-1)",
+              colorVar: barSeriesColors.budget,
             },
             {
               key: "actual_minor",
               label: "Actual",
-              colorVar: "var(--chart-2)",
+              colorVar: barSeriesColors.actual,
             },
           ]}
-          yTickFormatter={formatChartAmount}
+          yTickFormatter={formatCompactAxisAmount}
           tooltipValueFormatter={formatChartAmount}
-          emptyMessage="No category budget data to compare for this month"
-          ariaLabel="Budget versus actual spend by category"
+          emptyMessage={`No ${effectiveBarType} budget data to compare for this month`}
+          ariaLabel={`Budget versus actual spend by ${barTypeLabel} category`}
         />
       </GridItem>
 
@@ -931,7 +1209,10 @@ export const BudgetsPage = () => {
                                 {formatProgressLabel(row.progress_percent)}
                               </span>
                             </div>
-                            <Progress value={row.progress_percent_for_bar} className="h-2" />
+                            <Progress
+                              value={row.progress_percent_for_bar}
+                              className="h-2"
+                            />
                           </div>
                         </CardContent>
                       </Card>
