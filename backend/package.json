@@ -11,7 +11,9 @@
     "lint": "eslint src --max-warnings 0",
     "db:migrate": "npx sequelize-cli db:migrate",
     "db:seed": "npx sequelize-cli db:seed:all --config src/config/env.config.js --seeders-path src/seeders",
-    "seed:mock-tx": "node -r dotenv/config scripts/seed-mock-transactions.js"
+    "seed:mock-tx": "node -r dotenv/config scripts/seed-mock-transactions.js",
+    "seed:budget-may": "node -r dotenv/config scripts/seed-budget-may.js",
+    "seed:may-tx": "node -r dotenv/config scripts/seed-may-transactions.js"
   },
   "keywords": [
     "personal-finance",

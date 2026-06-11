@@ -6,10 +6,23 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import type { LucideIcon } from "lucide-react"
+
+export type PageHeaderOverflowAction = {
+  id: string
+  label: string
+  icon: LucideIcon
+  onSelect: () => void
+}
+
+export type PageHeaderControlsConfig = {
+  toolbar: ReactNode
+  overflowActions?: PageHeaderOverflowAction[]
+}
 
 type PageHeaderControlsContextValue = {
-  headerControls: ReactNode | null
-  setHeaderControls: (controls: ReactNode | null) => void
+  headerControls: PageHeaderControlsConfig | null
+  setHeaderControls: (controls: PageHeaderControlsConfig | null) => void
 }
 
 const PageHeaderControlsContext =
@@ -20,13 +33,15 @@ export const PageHeaderControlsProvider = ({
 }: {
   children: ReactNode
 }) => {
-  const [headerControls, setHeaderControlsState] = useState<ReactNode | null>(
-    null,
-  )
+  const [headerControls, setHeaderControlsState] =
+    useState<PageHeaderControlsConfig | null>(null)
 
-  const setHeaderControls = useCallback((controls: ReactNode | null) => {
-    setHeaderControlsState(controls)
-  }, [])
+  const setHeaderControls = useCallback(
+    (controls: PageHeaderControlsConfig | null) => {
+      setHeaderControlsState(controls)
+    },
+    [],
+  )
 
   return (
     <PageHeaderControlsContext.Provider
@@ -47,7 +62,9 @@ export const usePageHeaderControlsContext = () => {
   return context
 }
 
-export const usePageHeaderControls = (controls: ReactNode | null) => {
+export const usePageHeaderControls = (
+  controls: PageHeaderControlsConfig | null,
+) => {
   const { setHeaderControls } = usePageHeaderControlsContext()
 
   useEffect(() => {

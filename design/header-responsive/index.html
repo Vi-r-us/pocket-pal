@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PocketPal — Responsive Header Design</title>
+<style>
+  /* ---------- PocketPal dark theme tokens ---------- */
+  :root {
+    --background: oklch(0.19 0.03 160);
+    --foreground: oklch(0.96 0 156.67);
+    --card: oklch(0.26 0.03 159.84);
+    --card-foreground: oklch(0.96 0 156.67);
+    --primary: oklch(0.78 0.12 156.2);
+    --primary-foreground: oklch(0.21 0.03 159.7);
+    --muted: oklch(0.29 0.03 160.45);
+    --muted-foreground: oklch(0.66 0.04 160.03);
+    --border: oklch(0.37 0.04 159.88);
+    --ring: oklch(0.78 0.12 156.2);
+    --radius: 0.625rem;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    line-height: 1.5;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 40px 0 4px; }
+  .lede, .section-note { color: var(--muted-foreground); font-size: 0.875rem; margin: 0 0 16px; }
+  code {
+    background: var(--muted);
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: 0.8em;
+  }
+
+  /* ---------- Device frames ---------- */
+  .frame-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+
+  .frame {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--background);
+    container-type: inline-size;
+  }
+  .frame-label {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    margin: 0 0 8px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .frame-body {
+    padding: 14px;
+    border-top: 1px dashed var(--border);
+    color: var(--muted-foreground);
+    font-size: 0.8rem;
+  }
+
+  .resizable {
+    resize: horizontal;
+    overflow: auto;
+    min-width: 320px;
+    max-width: 100%;
+  }
+
+  /* ---------- Shared header building blocks ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    background: transparent;
+    color: var(--foreground);
+    flex-shrink: 0;
+  }
+  .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn-outline { border-color: var(--border); background: var(--card); }
+  .btn-ghost-icon {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+    border-color: var(--border);
+    background: var(--card);
+  }
+
+  .month-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .month-trigger svg { width: 15px; height: 15px; color: var(--muted-foreground); flex-shrink: 0; }
+  .month-trigger .chev { margin-left: 2px; }
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--muted);
+    color: var(--foreground);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .app-header {
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in oklab, var(--background) 90%, transparent);
+  }
+  .header-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    min-height: 64px;
+  }
+  .header-left { min-width: 0; }
+  .header-title { font-size: 1.05rem; font-weight: 600; margin: 0; white-space: nowrap; }
+  .header-subtitle {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+  /* Secondary toolbar row (mobile only) */
+  .header-toolbar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 16px 10px;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+  /* Overflow dropdown */
+  .overflow-wrap { position: relative; }
+  .dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 170px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+    z-index: 10;
+    display: none;
+  }
+  .dropdown.open { display: block; }
+  .dropdown button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-size: 0.85rem;
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .dropdown button:hover { background: var(--muted); }
+  .dropdown svg { width: 15px; height: 15px; color: var(--muted-foreground); }
+
+  /* Labels that swap with icons at smaller sizes */
+  .label-short { display: none; }
+
+  /* =========================================================
+     CURRENT (problem) — everything stays visible and wraps
+     ========================================================= */
+  .header-current .header-right { flex-wrap: wrap; justify-content: flex-end; }
+
+  /* =========================================================
+     PROPOSED — container-query driven adaptation
+     =========================================================
+     >= 900px : full layout (title + subtitle | picker + Copy month + Add Budget + avatar)
+     640–899  : subtitle hidden, "Copy month" -> icon-only, "Add Budget" -> "Add"
+     < 640    : actions collapse — top row keeps title + "+" + avatar,
+                month chip + overflow menu drop to a second toolbar row
+  */
+  @container (max-width: 899px) {
+    .header-proposed .header-subtitle { display: none; }
+    .header-proposed .copy-month .btn-label { display: none; }
+    .header-proposed .copy-month { width: 36px; padding: 0; justify-content: center; }
+    .header-proposed .add-budget .label-full { display: none; }
+    .header-proposed .add-budget .label-short { display: inline; }
+  }
+
+  @container (max-width: 639px) {
+    .header-proposed .header-right .month-trigger,
+    .header-proposed .header-right .copy-month { display: none; }
+    .header-proposed .add-budget { width: 36px; padding: 0; justify-content: center; }
+    .header-proposed .add-budget .label-short { display: none; }
+    .header-proposed .header-toolbar { display: flex; }
+    .header-proposed .header-main { min-height: 56px; padding-bottom: 6px; }
+  }
+
+  /* fake page content under headers */
+  .page-skeleton { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 14px 16px; }
+  .skeleton-card {
+    height: 54px;
+    border-radius: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+  }
+
+  .callout {
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+    margin-top: 12px;
+  }
+  .callout strong { color: var(--foreground); }
+  .callout ul { margin: 8px 0 0; padding-left: 18px; }
+  .callout li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Responsive page header — Budgets</h1>
+  <p class="lede">
+    Problem: on the Budgets page the header holds the month picker, “Copy month”, “Add Budget” and the avatar.
+    Below ~900px it gets crowded; below ~640px it wraps and breaks. This page explores the fix.
+  </p>
+
+  <!-- ================= CURRENT ================= -->
+  <h2>1 · Current behavior (the problem)</h2>
+  <p class="section-note">All controls stay in one row and wrap — header height jumps, controls get squeezed.</p>
+
+  <div class="frame-row">
+    <div>
+      <p class="frame-label">Mobile · 390px</p>
+      <div class="frame" style="width: 390px;">
+        <header class="app-header header-current">
+          <div class="header-main">
+            <div class="header-left">
+              <p class="header-title">Budgets</p>
+            </div>
+            <div class="header-right">
+              <button class="month-trigger" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                May 2026
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <button class="btn btn-outline" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy month
+              </button>
+              <button class="btn btn-primary" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+                Add Budget
+              </button>
+              <span class="avatar">SA</span>
+            </div>
+          </div>
+        </header>
+        <div class="frame-body">Header wraps to 3 cramped rows; tap targets collide.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PROPOSED ================= -->
+  <h2>2 · Proposed adaptation</h2>
+  <p class="section-note">
+    One header component, three states. Same markup in every frame below — only the container width changes.
+  </p>
+
+  <div class="frame-row">
+    <!-- Desktop -->
+    <div style="flex: 1 1 100%;">
+      <p class="frame-label">Desktop · ≥ 900px — full layout</p>
+      <div class="frame" style="width: 100%;">
+        <header class="app-header header-proposed">
+          <div class="header-main">
+            <div class="header-left">
+              <p class="header-title">Budgets</p>
+              <p class="header-subtitle">Set monthly limits and monitor category-wise progress.</p>
+            </div>
+            <div class="header-right">
+              <button class="month-trigger" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                May 2026
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <button class="btn btn-outline copy-month" type="button" title="Copy month">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span class="btn-label">Copy month</span>
+              </button>
+              <button class="btn btn-primary add-budget" type="button" title="Add budget">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+                <span class="label-full">Add Budget</span><span class="label-short">Add</span>
+              </button>
+              <span class="avatar">SA</span>
+            </div>
+          </div>
+          <div class="header-toolbar">
+            <div class="toolbar-left">
+              <button class="month-trigger" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                May 2026
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+            <div class="overflow-wrap">
+              <button class="btn btn-ghost-icon" type="button" aria-label="More actions" onclick="toggleDropdown(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </button>
+              <div class="dropdown">
+                <button type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy month
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div class="page-skeleton"><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+      </div>
+    </div>
+
+    <!-- Tablet -->
+    <div>
+      <p class="frame-label">Tablet · 640–899px — subtitle hidden, icon-only “Copy month”, “Add”</p>
+      <div class="frame" style="width: 700px; max-width: 100%;">
+        <header class="app-header header-proposed">
+          <div class="header-main">
+            <div class="header-left">
+              <p class="header-title">Budgets</p>
+              <p class="header-subtitle">Set monthly limits and monitor category-wise progress.</p>
+            </div>
+            <div class="header-right">
+              <button class="month-trigger" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                May 2026
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <button class="btn btn-outline copy-month" type="button" title="Copy month">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span class="btn-label">Copy month</span>
+              </button>
+              <button class="btn btn-primary add-budget" type="button" title="Add budget">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+                <span class="label-full">Add Budget</span><span class="label-short">Add</span>
+              </button>
+              <span class="avatar">SA</span>
+            </div>
+          </div>
+          <div class="header-toolbar">
+            <div class="toolbar-left">
+              <button class="month-trigger" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                May 2026
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+            <div class="overflow-wrap">
+              <button class="btn btn-ghost-icon" type="button" aria-label="More actions" onclick="toggleDropdown(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </button>
+              <div class="dropdown">
+                <button type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy month
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div class="page-skeleton"><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+      </div>
+    </div>
+
+    <!-- Mobile -->
+    <div>
+      <p class="frame-label">Mobile · &lt; 640px — actions collapse, toolbar row appears</p>
+      <div class="frame" style="width: 390px;">
+        <header class="app-header header-proposed">
+          <div class="header-main">
+            <div class="header-left">
+              <p class="header-title">Budgets</p>
+              <p class="header-subtitle">Set monthly limits and monitor category-wise progress.</p>
+            </div>
+            <div class="header-right">
+              <button class="month-trigger" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                May 2026
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <button class="btn btn-outline copy-month" type="button" title="Copy month">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span class="btn-label">Copy month</span>
+              </button>
+              <button class="btn btn-primary add-budget" type="button" title="Add budget">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+                <span class="label-full">Add Budget</span><span class="label-short">Add</span>
+              </button>
+              <span class="avatar">SA</span>
+            </div>
+          </div>
+          <div class="header-toolbar">
+            <div class="toolbar-left">
+              <button class="month-trigger" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                May 2026
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+            <div class="overflow-wrap">
+              <button class="btn btn-ghost-icon" type="button" aria-label="More actions" onclick="toggleDropdown(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </button>
+              <div class="dropdown open">
+                <button type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy month
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div class="page-skeleton"><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+        <div class="frame-body">Overflow menu shown open: secondary actions like “Copy month” live here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LIVE DEMO ================= -->
+  <h2>3 · Live demo — drag the bottom-right corner</h2>
+  <p class="section-note">Same header, driven by CSS container queries. Resize to watch it adapt.</p>
+
+  <div class="frame resizable" style="width: 100%;">
+    <header class="app-header header-proposed">
+      <div class="header-main">
+        <div class="header-left">
+          <p class="header-title">Budgets</p>
+          <p class="header-subtitle">Set monthly limits and monitor category-wise progress.</p>
+        </div>
+        <div class="header-right">
+          <button class="month-trigger" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            May 2026
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <button class="btn btn-outline copy-month" type="button" title="Copy month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span class="btn-label">Copy month</span>
+          </button>
+          <button class="btn btn-primary add-budget" type="button" title="Add budget">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+            <span class="label-full">Add Budget</span><span class="label-short">Add</span>
+          </button>
+          <span class="avatar">SA</span>
+        </div>
+      </div>
+      <div class="header-toolbar">
+        <div class="toolbar-left">
+          <button class="month-trigger" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            May 2026
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="overflow-wrap">
+          <button class="btn btn-ghost-icon" type="button" aria-label="More actions" onclick="toggleDropdown(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          </button>
+          <div class="dropdown">
+            <button type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy month
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="page-skeleton"><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+  </div>
+
+  <!-- ================= NOTES ================= -->
+  <div class="callout">
+    <strong>Rules of the design</strong>
+    <ul>
+      <li><strong>≥ 900px</strong> — everything inline: month picker, “Copy month”, “Add Budget”, avatar.</li>
+      <li><strong>640–899px</strong> — subtitle hidden; “Copy month” becomes an icon-only button (with tooltip); primary action shortens to “Add”.</li>
+      <li><strong>&lt; 640px</strong> — top row keeps title + icon-only “+” + avatar. Page controls (month picker + overflow “⋯” menu) move to a second toolbar row under the header. Secondary actions like “Copy month” go inside the overflow menu.</li>
+      <li>The primary action never disappears — it only loses its label. Secondary actions degrade into the overflow menu.</li>
+      <li>Implementation mapping (Tailwind): subtitle already uses <code>hidden md:block</code>; add <code>hidden md:inline</code> on the “Copy month” label, <code>sm:hidden</code> on header-row controls, and render the toolbar row via the existing <code>usePageHeaderControls</code> slot with a <code>sm:hidden</code> wrapper. Pages without extra controls (Dashboard, Settings) never render the second row.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  function toggleDropdown(button) {
+    const dropdown = button.parentElement.querySelector(".dropdown");
+    const wasOpen = dropdown.classList.contains("open");
+    document.querySelectorAll(".dropdown.open").forEach((el) => el.classList.remove("open"));
+    if (!wasOpen) dropdown.classList.add("open");
+  }
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".overflow-wrap")) {
+      document.querySelectorAll(".dropdown.open").forEach((el) => el.classList.remove("open"));
+    }
+  });
+</script>
+</body>
+</html>

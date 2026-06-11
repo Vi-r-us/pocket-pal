@@ -18,6 +18,10 @@ import brandLogo from "@/assets/images/brand/logo.png";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  PageHeaderControlsInline,
+  PageHeaderControlsMobileToolbar,
+} from "@/components/layout/PageHeaderControlsSlot";
+import {
   PageHeaderControlsProvider,
   usePageHeaderControlsContext,
 } from "@/contexts/PageHeaderControlsContext";
@@ -47,6 +51,7 @@ type HeaderContent = {
 
 type HeaderPrimaryAction = {
   label: string
+  shortLabel: string
   actionKey: AppHeaderPrimaryActionKey
 }
 
@@ -128,22 +133,27 @@ const pageHeaderContent: Record<string, HeaderContent> = {
 const pageHeaderPrimaryAction: Record<string, HeaderPrimaryAction> = {
   "/accounts": {
     label: "Add Account",
+    shortLabel: "Add",
     actionKey: "create-account",
   },
   "/transactions": {
     label: "Add Transaction",
+    shortLabel: "Add",
     actionKey: "create-transaction",
   },
   "/budgets": {
     label: "Add Budget",
+    shortLabel: "Add",
     actionKey: "create-budget",
   },
   "/goals": {
     label: "Add Goal",
+    shortLabel: "Add",
     actionKey: "create-goal",
   },
   "/settings/categories": {
     label: "Add Category Group",
+    shortLabel: "Add",
     actionKey: "create-category-group",
   },
 }
@@ -428,26 +438,40 @@ const AppShellLayout = () => {
         )}
       >
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-          <div className="app-content-frame flex h-14 items-center justify-between gap-3 md:h-16 md:gap-4">
-            <div className="flex flex-col justify-center">
-              <h1 className="text-base font-semibold text-foreground md:text-xl">
+          <div
+            className={cn(
+              "app-content-frame flex items-center justify-between gap-3 md:gap-4",
+              headerControls ? "h-14 sm:h-16" : "h-14 md:h-16",
+            )}
+          >
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-base font-semibold text-foreground md:text-xl">
                 {title}
               </h1>
-              <p className="hidden text-xs text-muted-foreground md:block md:text-sm">
+              <p className="hidden truncate text-xs text-muted-foreground lg:block lg:text-sm">
                 {subtitle}
               </p>
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 md:gap-3">
-              {headerControls}
+            <div className="flex shrink-0 items-center justify-end gap-2 md:gap-3">
+              {headerControls ? (
+                <PageHeaderControlsInline controls={headerControls} />
+              ) : null}
               {headerPrimaryAction ? (
                 <Button
                   type="button"
-                  className="shrink-0 gap-1.5 rounded-lg px-3 md:h-9 md:px-4 "
+                  className="size-9 shrink-0 gap-0 rounded-lg px-0 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3 md:px-4"
                   onClick={handleHeaderPrimaryActionClick}
+                  aria-label={headerPrimaryAction.label}
+                  title={headerPrimaryAction.label}
                 >
                   <Plus className="size-4" aria-hidden />
-                  <span>{headerPrimaryAction.label}</span>
+                  <span className="hidden sm:inline lg:hidden">
+                    {headerPrimaryAction.shortLabel}
+                  </span>
+                  <span className="hidden lg:inline">
+                    {headerPrimaryAction.label}
+                  </span>
                 </Button>
               ) : null}
 
@@ -531,6 +555,9 @@ const AppShellLayout = () => {
               </Popover>
             </div>
           </div>
+          {headerControls ? (
+            <PageHeaderControlsMobileToolbar controls={headerControls} />
+          ) : null}
         </header>
 
         <main className="flex-1 overflow-y-auto bg-background py-4 md:py-6 xl:py-8">

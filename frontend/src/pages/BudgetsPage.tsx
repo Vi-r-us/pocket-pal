@@ -2,6 +2,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import {
   BanknoteArrowDown,
   BanknoteArrowUp,
+  Copy,
   MoreHorizontal,
   Pencil,
   PiggyBank,
@@ -18,12 +19,22 @@ import {
   type CategoryBreakdownDatum,
 } from "@/components/charts";
 import { MonthPickerField } from "@/components/MonthPickerField";
-import { CreateBudgetModal } from "@/features/budgets/components";
+import {
+  CloneBudgetCategoryModal,
+  CloneBudgetPeriodModal,
+  CreateBudgetModal,
+} from "@/features/budgets/components";
+import {
+  buildPeriodClonePayload,
+  fetchBudgetMonthCategoryIds,
+  mapSummaryToCloneRows,
+  putCategoryBudgets,
+} from "@/features/budgets/budgetClone";
+import type { BudgetCloneRow, CloneConflictStrategy } from "@/features/budgets/types";
 import { MetricStatCard } from "@/components/cards/MetricStatCard";
 import {
   DataTableBase,
   DataTablePagination,
-  DataTableToolbar,
 } from "@/components/data-table";
 import { GridItem } from "@/components/layout/GridItem";
 import { usePageHeaderControls } from "@/contexts/PageHeaderControlsContext";
@@ -250,6 +261,11 @@ export const BudgetsPage = () => {
   const [budgetRowPendingDelete, setBudgetRowPendingDelete] =
     useState<BudgetCategoryTableRow | null>(null);
   const [isDeletingBudget, setIsDeletingBudget] = useState(false);
+  const [isCategoryCloneModalOpen, setIsCategoryCloneModalOpen] =
+    useState(false);
+  const [isPeriodCloneModalOpen, setIsPeriodCloneModalOpen] = useState(false);
+  const [categoryCloneRow, setCategoryCloneRow] =
+    useState<BudgetCloneRow | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -312,22 +328,42 @@ export const BudgetsPage = () => {
     [selectedYyyyMm],
   );
 
-  const budgetsHeaderControls = useMemo(
-    () => (
-      <MonthPickerField
-        id="budgets-month-picker"
-        className="w-[200px]"
-        value={yyyyMmToInputValue(selectedYyyyMm)}
-        onChange={(next) => {
-          const parsed = inputValueToYyyyMm(next);
-          if (parsed === null) return;
-          setSelectedYyyyMm(parsed);
-          setTablePage(1);
-        }}
-        aria-label="Select budget month"
-      />
-    ),
+  const sourceMonthValue = useMemo(
+    () => yyyyMmToInputValue(selectedYyyyMm),
     [selectedYyyyMm],
+  );
+
+  const sourceCloneRows = useMemo(
+    () => mapSummaryToCloneRows(summary?.summaries ?? []),
+    [summary?.summaries],
+  );
+
+  const budgetsHeaderControls = useMemo(
+    () => ({
+      toolbar: (
+        <MonthPickerField
+          id="budgets-month-picker"
+          className="w-full min-w-0 sm:w-[200px]"
+          value={sourceMonthValue}
+          onChange={(next) => {
+            const parsed = inputValueToYyyyMm(next);
+            if (parsed === null) return;
+            setSelectedYyyyMm(parsed);
+            setTablePage(1);
+          }}
+          aria-label="Select budget month"
+        />
+      ),
+      overflowActions: [
+        {
+          id: "copy-month",
+          label: "Copy month",
+          icon: Copy,
+          onSelect: () => setIsPeriodCloneModalOpen(true),
+        },
+      ],
+    }),
+    [sourceMonthValue],
   );
 
   usePageHeaderControls(budgetsHeaderControls);
@@ -590,6 +626,8 @@ export const BudgetsPage = () => {
 
   const formatChartAmount = (value: string | number) =>
     currencyCode ? toCurrency(value, currencyCode) : "—";
+  const formatCloneAmount = (minor: number) =>
+    currencyCode ? toCurrency(minor, currencyCode) : "—";
   const formatCompactAxisAmount = (value: string | number) =>
     compactAxisFormatter.format(toMinorNumber(value) / 100);
   const formatProgressLabel = (progressPercent: number) =>
@@ -617,7 +655,7 @@ export const BudgetsPage = () => {
   };
 
   const handleCategoryAction = useCallback(
-    (action: "edit" | "reset" | "delete", row: BudgetCategoryTableRow) => {
+    (action: "edit" | "reset" | "delete" | "clone", row: BudgetCategoryTableRow) => {
       if (action === "edit") {
         setBudgetModalMode("edit");
         setBudgetModalInitialRows([
@@ -628,6 +666,16 @@ export const BudgetsPage = () => {
         ]);
         setBudgetModalKey((value) => value + 1);
         setIsCreateBudgetModalOpen(true);
+        return;
+      }
+      if (action === "clone") {
+        setCategoryCloneRow({
+          category_id: row.category_id,
+          category_name: row.category_name,
+          category_type: row.category_type,
+          amount_minor: row.budget_minor,
+        });
+        setIsCategoryCloneModalOpen(true);
         return;
       }
       if (action === "delete") {
@@ -644,6 +692,48 @@ export const BudgetsPage = () => {
     },
     [],
   );
+
+  const handleBudgetModalSuccess = (nextYyyyMm: number) => {
+    setSelectedYyyyMm(nextYyyyMm);
+    setRefreshKey((value) => value + 1);
+  };
+
+  const handleCloneCategoryBudget = async (targetMonthValue: string) => {
+    if (!categoryCloneRow) return;
+
+    const targetYyyyMm = inputValueToYyyyMm(targetMonthValue);
+    if (targetYyyyMm === null) return;
+
+    await putCategoryBudgets(targetYyyyMm, [
+      {
+        category_id: categoryCloneRow.category_id,
+        amount_minor: categoryCloneRow.amount_minor,
+      },
+    ]);
+    setCategoryCloneRow(null);
+    handleBudgetModalSuccess(targetYyyyMm);
+  };
+
+  const handleClonePeriodBudgets = async (
+    targetMonthValue: string,
+    strategy: CloneConflictStrategy,
+  ) => {
+    const targetYyyyMm = inputValueToYyyyMm(targetMonthValue);
+    if (targetYyyyMm === null) return;
+
+    const existingTargetCategoryIds =
+      await fetchBudgetMonthCategoryIds(targetYyyyMm);
+    const categoryBudgets = buildPeriodClonePayload(
+      sourceCloneRows,
+      existingTargetCategoryIds,
+      strategy,
+    );
+
+    if (categoryBudgets.length === 0) return;
+
+    await putCategoryBudgets(targetYyyyMm, categoryBudgets);
+    handleBudgetModalSuccess(targetYyyyMm);
+  };
 
   const renderCategoryRowActions = useCallback(
     (row: BudgetCategoryTableRow) => (
@@ -663,6 +753,10 @@ export const BudgetsPage = () => {
             <Pencil className="size-4" aria-hidden />
             Edit
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => handleCategoryAction("clone", row)}>
+            <Copy className="size-4" aria-hidden />
+            Clone
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => handleCategoryAction("reset", row)}>
             <RotateCcw className="size-4" aria-hidden />
             Reset
@@ -679,11 +773,6 @@ export const BudgetsPage = () => {
     ),
     [handleCategoryAction],
   );
-
-  const handleBudgetModalSuccess = (nextYyyyMm: number) => {
-    setSelectedYyyyMm(nextYyyyMm);
-    setRefreshKey((value) => value + 1);
-  };
 
   const handleDeleteBudget = async () => {
     if (!budgetRowPendingDelete || isDeletingBudget) return;
@@ -826,6 +915,27 @@ export const BudgetsPage = () => {
         mode={budgetModalMode}
         initialRows={budgetModalInitialRows}
         onSuccess={handleBudgetModalSuccess}
+      />
+      <CloneBudgetCategoryModal
+        open={isCategoryCloneModalOpen}
+        onOpenChange={(open) => {
+          setIsCategoryCloneModalOpen(open);
+          if (!open) setCategoryCloneRow(null);
+        }}
+        row={categoryCloneRow}
+        sourceMonthValue={sourceMonthValue}
+        sourceMonthLabel={monthLabel}
+        formatAmount={formatCloneAmount}
+        onClone={handleCloneCategoryBudget}
+      />
+      <CloneBudgetPeriodModal
+        open={isPeriodCloneModalOpen}
+        onOpenChange={setIsPeriodCloneModalOpen}
+        sourceMonthValue={sourceMonthValue}
+        sourceMonthLabel={monthLabel}
+        sourceRows={sourceCloneRows}
+        formatAmount={formatCloneAmount}
+        onClone={handleClonePeriodBudgets}
       />
       <AlertDialog
         open={isDeleteDialogOpen}
