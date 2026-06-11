@@ -250,7 +250,7 @@ export const ImportDataSettingsPage = () => {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".xlsx,.xls,.csv,.json"
+                  accept=".xlsx,.csv,.json"
                   className="hidden"
                   onChange={handleFileChange}
                 />

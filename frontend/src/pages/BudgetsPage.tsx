@@ -17,6 +17,7 @@ import {
   MultiBarChartCard,
   type CategoryBreakdownDatum,
 } from "@/components/charts";
+import { MonthPickerField } from "@/components/MonthPickerField";
 import { CreateBudgetModal } from "@/features/budgets/components";
 import { MetricStatCard } from "@/components/cards/MetricStatCard";
 import {
@@ -25,6 +26,7 @@ import {
   DataTableToolbar,
 } from "@/components/data-table";
 import { GridItem } from "@/components/layout/GridItem";
+import { usePageHeaderControls } from "@/contexts/PageHeaderControlsContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +55,12 @@ import {
 } from "@/constants/headerActions";
 import { api } from "@/lib/api";
 import { getInlineErrorMessage } from "@/lib/errors/normalize";
+import {
+  formatYyyyMmLabel,
+  getCurrentYyyyMm,
+  inputValueToYyyyMm,
+  yyyyMmToInputValue,
+} from "@/lib/month";
 import { cn } from "@/lib/utils";
 import type { ApiEnvelope } from "@/types/api";
 
@@ -156,26 +164,6 @@ const compactAxisFormatter = new Intl.NumberFormat("en-IN", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
-
-const getCurrentYyyyMm = () => {
-  const now = new Date();
-  return now.getFullYear() * 100 + (now.getMonth() + 1);
-};
-
-const formatYyyyMmLabel = (yyyyMm: number) => {
-  const yyyyMmText = String(yyyyMm);
-  if (!/^\d{6}$/.test(yyyyMmText)) return "Selected month";
-
-  const year = Number(yyyyMmText.slice(0, 4));
-  const month = Number(yyyyMmText.slice(4, 6)) - 1;
-  const monthDate = new Date(year, month, 1);
-
-  if (Number.isNaN(monthDate.getTime())) return "Selected month";
-  return monthDate.toLocaleDateString("en-IN", {
-    month: "long",
-    year: "numeric",
-  });
-};
 
 const getCurrencyFormatter = (currency: string) => {
   const normalizedCurrency = currency?.trim().toUpperCase() || "USD";
@@ -323,6 +311,26 @@ export const BudgetsPage = () => {
     () => formatYyyyMmLabel(selectedYyyyMm),
     [selectedYyyyMm],
   );
+
+  const budgetsHeaderControls = useMemo(
+    () => (
+      <MonthPickerField
+        id="budgets-month-picker"
+        className="w-[200px]"
+        value={yyyyMmToInputValue(selectedYyyyMm)}
+        onChange={(next) => {
+          const parsed = inputValueToYyyyMm(next);
+          if (parsed === null) return;
+          setSelectedYyyyMm(parsed);
+          setTablePage(1);
+        }}
+        aria-label="Select budget month"
+      />
+    ),
+    [selectedYyyyMm],
+  );
+
+  usePageHeaderControls(budgetsHeaderControls);
 
   useEffect(() => {
     const updateResponsiveTableView = () => {
@@ -1146,16 +1154,13 @@ export const BudgetsPage = () => {
             </ToggleGroup>
           </CardHeader>
           <CardContent className="space-y-4">
-            <DataTableToolbar
-              leftSlot={
-                <p className="text-sm text-muted-foreground">{monthLabel}</p>
-              }
+            {/* <DataTableToolbar
               rightSlot={
                 <span className="text-sm text-muted-foreground">
                   {totalFilteredRows} categories
                 </span>
               }
-            />
+            /> */}
 
             {isMobileTableView ? (
               paginatedCategoryTableRows.length === 0 ? (

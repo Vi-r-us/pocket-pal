@@ -18,6 +18,10 @@ import brandLogo from "@/assets/images/brand/logo.png";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  PageHeaderControlsProvider,
+  usePageHeaderControlsContext,
+} from "@/contexts/PageHeaderControlsContext";
+import {
   APP_HEADER_PRIMARY_ACTION_EVENT,
   type AppHeaderPrimaryActionDetail,
   type AppHeaderPrimaryActionKey,
@@ -226,8 +230,17 @@ const getInitials = (name: string) => {
 };
 
 export const AppShell = () => {
+  return (
+    <PageHeaderControlsProvider>
+      <AppShellLayout />
+    </PageHeaderControlsProvider>
+  );
+};
+
+const AppShellLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { headerControls } = usePageHeaderControlsContext();
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const handleToggleSidebar = useUIStore((state) => state.toggleSidebar);
   const user = useAuthStore((state) => state.user);
@@ -426,6 +439,7 @@ export const AppShell = () => {
             </div>
 
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 md:gap-3">
+              {headerControls}
               {headerPrimaryAction ? (
                 <Button
                   type="button"

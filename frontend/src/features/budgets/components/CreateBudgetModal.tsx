@@ -1,5 +1,6 @@
 import { createElement, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
+import { MonthPickerField } from "@/components/MonthPickerField";
 import { AppModal } from "@/components/modals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,10 @@ import {
 import { api } from "@/lib/api";
 import { resolveCategoryIcon } from "@/lib/categoryIcons";
 import { getInlineErrorMessage } from "@/lib/errors/normalize";
+import {
+  inputValueToYyyyMm,
+  yyyyMmToInputValue,
+} from "@/lib/month";
 import type { ApiEnvelope } from "@/types/api";
 
 type BudgetCategoryOption = {
@@ -74,18 +79,6 @@ const toFormRows = (initialRows?: BudgetPrefillRow[]) => {
   }));
 };
 
-const toMonthInputValue = (yyyyMm: number) => {
-  const text = String(yyyyMm);
-  if (!/^\d{6}$/.test(text)) return "";
-  return `${text.slice(0, 4)}-${text.slice(4, 6)}`;
-};
-
-const toYyyyMm = (monthInput: string) => {
-  if (!/^\d{4}-\d{2}$/.test(monthInput)) return null;
-  const normalized = monthInput.replace("-", "");
-  return /^\d{6}$/.test(normalized) ? Number(normalized) : null;
-};
-
 const parseMajorAmountToMinor = (rawAmount: string) => {
   const normalized = rawAmount.trim().replace(/,/g, "");
   if (!normalized) return null;
@@ -104,7 +97,7 @@ export const CreateBudgetModal = ({
   onSuccess,
 }: CreateBudgetModalProps) => {
   const [monthInput, setMonthInput] = useState(
-    toMonthInputValue(initialYyyyMm),
+    yyyyMmToInputValue(initialYyyyMm),
   );
   const [rows, setRows] = useState<BudgetFormRow[]>(() =>
     toFormRows(initialRows),
@@ -115,6 +108,11 @@ export const CreateBudgetModal = ({
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  useEffect(() => {
+    if (!open) return
+    setMonthInput(yyyyMmToInputValue(initialYyyyMm))
+  }, [open, initialYyyyMm])
 
   useEffect(() => {
     if (!open) return;
@@ -204,7 +202,7 @@ export const CreateBudgetModal = ({
     event.preventDefault();
     setSubmitError("");
 
-    const yyyyMm = toYyyyMm(monthInput);
+    const yyyyMm = inputValueToYyyyMm(monthInput);
     if (!yyyyMm) {
       setSubmitError("Select a valid month");
       return;
@@ -313,13 +311,12 @@ export const CreateBudgetModal = ({
       >
         <div className="space-y-2">
           <Label htmlFor="budget-month">Month</Label>
-          <Input
+          <MonthPickerField
             id="budget-month"
-            type="month"
             value={monthInput}
-            onChange={(event) => setMonthInput(event.target.value)}
+            onChange={setMonthInput}
+            placeholder="Pick a month"
             aria-label="Budget month"
-            required
           />
         </div>
 

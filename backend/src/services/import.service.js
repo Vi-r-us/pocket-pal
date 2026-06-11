@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import XLSX from "xlsx";
+import { parse as parseCsv } from "csv-parse/sync";
+import ExcelJS from "exceljs";
 import { Op } from "sequelize";
 import ApiError from "../utils/ApiError.js";
 import handleServerError from "../utils/handleServerError.js";
@@ -81,9 +82,38 @@ const assertImportType = (importType) => {
 
 const normalizeCell = (value) => {
   if (value == null) return "";
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "object") {
+    if ("result" in value) return normalizeCell(value.result);
+    if (typeof value.text === "string") return value.text.trim();
+    if (Array.isArray(value.richText)) {
+      return value.richText.map((part) => part.text ?? "").join("").trim();
+    }
+    return JSON.stringify(value);
+  }
   if (typeof value === "string") return value.trim();
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return JSON.stringify(value);
+  return String(value);
+};
+
+const matrixToImportRows = (matrix) => {
+  if (!Array.isArray(matrix) || matrix.length < 2) {
+    throw new ApiError(400, "File must include a header row and at least one data row");
+  }
+
+  const headerRow = matrix[0];
+  const sourceColumns = headerRow.map((col, idx) => String(col || `column_${idx + 1}`).trim());
+  const dataRows = matrix.slice(1);
+
+  const normalizedRows = dataRows.map((cells) => {
+    const record = {};
+    sourceColumns.forEach((column, index) => {
+      record[column] = normalizeCell(cells?.[index]);
+    });
+    return record;
+  });
+
+  return { sourceColumns, rows: normalizedRows };
 };
 
 const parseJsonRows = (buffer) => {
@@ -123,37 +153,38 @@ const parseJsonRows = (buffer) => {
   return { sourceColumns, rows: normalizedRows };
 };
 
-const parseSheetRows = (buffer) => {
-  const workbook = XLSX.read(buffer, { type: "buffer" });
-  const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) {
+const parseCsvRows = (buffer) => {
+  const matrix = parseCsv(buffer, {
+    columns: false,
+    skip_empty_lines: true,
+    relax_column_count: true,
+    trim: true,
+  });
+
+  return matrixToImportRows(matrix);
+};
+
+const parseXlsxRows = async (buffer) => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
     throw new ApiError(400, "No worksheets found in uploaded file");
   }
 
-  const sheet = workbook.Sheets[firstSheetName];
-  const matrix = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    defval: "",
-    blankrows: false,
+  const columnCount = worksheet.columnCount || worksheet.actualColumnCount || 0;
+  const matrix = [];
+
+  worksheet.eachRow({ includeEmpty: false }, (row) => {
+    const cells = [];
+    for (let col = 1; col <= columnCount; col += 1) {
+      cells.push(row.getCell(col).value ?? "");
+    }
+    matrix.push(cells);
   });
 
-  if (!Array.isArray(matrix) || matrix.length < 2) {
-    throw new ApiError(400, "File must include a header row and at least one data row");
-  }
-
-  const headerRow = matrix[0];
-  const sourceColumns = headerRow.map((col, idx) => String(col || `column_${idx + 1}`).trim());
-  const dataRows = matrix.slice(1);
-
-  const normalizedRows = dataRows.map((cells) => {
-    const record = {};
-    sourceColumns.forEach((column, index) => {
-      record[column] = normalizeCell(cells?.[index]);
-    });
-    return record;
-  });
-
-  return { sourceColumns, rows: normalizedRows };
+  return matrixToImportRows(matrix);
 };
 
 const parseUploadedFile = async (file) => {
@@ -164,14 +195,20 @@ const parseUploadedFile = async (file) => {
     return parseJsonRows(buffer);
   }
 
+  if (ext === ".xls") {
+    throw new ApiError(400, "Legacy .xls format is not supported. Save the file as .xlsx and try again.");
+  }
+
+  if (ext === ".csv" || file.mimetype.includes("csv")) {
+    return parseCsvRows(buffer);
+  }
+
   if (
     ext === ".xlsx" ||
-    ext === ".xls" ||
-    ext === ".csv" ||
     file.mimetype.includes("spreadsheet") ||
-    file.mimetype.includes("csv")
+    file.mimetype.includes("excel")
   ) {
-    return parseSheetRows(buffer);
+    return parseXlsxRows(buffer);
   }
 
   throw new ApiError(400, "Unsupported file format. Use .xlsx, .csv, or .json");
