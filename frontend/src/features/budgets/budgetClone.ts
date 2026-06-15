@@ -5,6 +5,7 @@ import type {
   BudgetCategoryType,
   CloneConflictStrategy,
 } from "./types"
+import { normalizeCategoryType, toMinorNumber } from "./utils"
 
 type BudgetMonthResponse = {
   budgets: Array<{
@@ -22,20 +23,9 @@ export const CATEGORY_TYPE_LABELS: Record<BudgetCategoryType, string> = {
   savings: "Savings",
 }
 
-const normalizeCategoryType = (value: string | null | undefined): BudgetCategoryType => {
-  if (value === "income" || value === "savings") {
-    return value
-  }
-  return "expense"
-}
-
-const toMinorNumber = (value: number | string) => {
-  if (typeof value === "number") return value
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-export async function fetchBudgetMonthCategoryIds(yyyyMm: number): Promise<number[]> {
+export async function fetchBudgetMonthCategoryIds(
+  yyyyMm: number,
+): Promise<number[]> {
   const response = await api.get<ApiEnvelope<BudgetMonthResponse>>(
     `/budgets/month/${yyyyMm}`,
   )

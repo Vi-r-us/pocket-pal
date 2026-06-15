@@ -13,7 +13,8 @@
     "db:seed": "npx sequelize-cli db:seed:all --config src/config/env.config.js --seeders-path src/seeders",
     "seed:mock-tx": "node -r dotenv/config scripts/seed-mock-transactions.js",
     "seed:budget-may": "node -r dotenv/config scripts/seed-budget-may.js",
-    "seed:may-tx": "node -r dotenv/config scripts/seed-may-transactions.js"
+    "seed:may-tx": "node -r dotenv/config scripts/seed-may-transactions.js",
+    "repair:savings-balances": "node -r dotenv/config scripts/repair-savings-balances.js"
   },
   "keywords": [
     "personal-finance",

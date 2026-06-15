@@ -1,11 +1,24 @@
+import { randomUUID } from "node:crypto";
 import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
 import { Op } from "sequelize";
+import { sequelize } from "../db/sequelize.js";
 import { Account, Category, CategoryGroup, Currency, FXRate, Transaction, User } from "../models/index.js";
 import { getOrFetchRate } from "./fx.service.js";
 import { sanitizeDate } from "../utils/sanitize.js";
 import { TRANSACTION_TYPE_NORMALIZATION_MAP } from "../constants/constants.js";
+import {
+  buildAllocateMetadata,
+  buildExternalTransferMetadata,
+  buildMirrorTransferMetadata,
+  buildPrimaryTransferMetadata,
+  isInternalTransferSavings,
+  getSavingsMode,
+  getTransactionMetadata,
+  getTransferLeg,
+  isPrimarySavingsContribution,
+} from "../utils/savingsTransaction.js";
 
 /**
  * Resolve base currency for a user: user.base_currency if set and valid, else account.currency_code.
@@ -45,10 +58,30 @@ function getTypeWhereClause(type) {
   return normalizedType;
 }
 
-function getBalanceDelta(type, amountMinor) {
+function getBalanceDelta(type, amountMinor, context = {}) {
   const normalizedType = normalizeTransactionType(type);
   const amount = Number(amountMinor) || 0;
-  return normalizedType === "expense" ? -amount : amount;
+  if (normalizedType === "expense") return -amount;
+  if (normalizedType === "income") return amount;
+  if (normalizedType === "savings") {
+    const savingsMode = context.savings_mode ?? getSavingsMode(context.metadata);
+    const transferLeg = context.transfer_leg ?? getTransferLeg(context.metadata);
+    if (savingsMode === "allocate") return 0;
+    if (savingsMode === "transfer") {
+      return transferLeg === "mirror" ? amount : -amount;
+    }
+    return 0;
+  }
+  return amount;
+}
+
+function getBalanceDeltaFromTransaction(transaction) {
+  const metadata = getTransactionMetadata(transaction);
+  return getBalanceDelta(transaction.type, transaction.amount_minor, {
+    savings_mode: getSavingsMode(metadata),
+    transfer_leg: getTransferLeg(metadata),
+    metadata,
+  });
 }
 
 function buildTransactionsWhere(userId, params = {}) {
@@ -89,6 +122,274 @@ function buildTransactionsWhere(userId, params = {}) {
   return where;
 }
 
+async function resolveCategory(userId, categoryId) {
+  const category = await Category.findOne({
+    where: {
+      category_id: categoryId,
+      [Op.or]: [{ user_id: null }, { user_id: userId }],
+    },
+  });
+  if (!category) {
+    throw new ApiError(404, "Category not found");
+  }
+  return category;
+}
+
+async function resolveAccount(userId, accountId) {
+  const account = await Account.findOne({
+    where: { account_id: accountId, user_id: userId },
+  });
+  if (!account) {
+    throw new ApiError(404, "Account not found");
+  }
+  return account;
+}
+
+async function computeFxSnapshot(userId, { amountMinor, currency, account, timestamp }) {
+  const baseCurrency = await resolveBaseCurrency(userId, account.currency_code);
+  const asOfDate = timestamp
+    ? new Date(timestamp).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  const fxRate = await getOrFetchRate(currency, baseCurrency, asOfDate);
+  const fromCurrencyRow = await Currency.findByPk(currency);
+  const baseCurrencyRow = await Currency.findByPk(baseCurrency);
+  const amountBaseMinor = computeAmountBaseMinor(
+    amountMinor,
+    fxRate.rate,
+    fromCurrencyRow.minor_unit,
+    baseCurrencyRow.minor_unit
+  );
+  return { baseCurrency, amountBaseMinor, fxRate };
+}
+
+async function validateSavingsTransferAccounts(userId, sourceAccount, destinationAccountId) {
+  if (destinationAccountId == null) {
+    throw new ApiError(400, "destination_account_id is required for transfer savings");
+  }
+  if (Number(destinationAccountId) === Number(sourceAccount.account_id)) {
+    throw new ApiError(400, "Source and destination accounts must be different");
+  }
+
+  const destinationAccount = await resolveAccount(userId, destinationAccountId);
+  if (!destinationAccount.is_active) {
+    throw new ApiError(400, "Destination account is not active");
+  }
+  if (destinationAccount.currency_code !== sourceAccount.currency_code) {
+    throw new ApiError(400, "Destination account must use the same currency as the source account");
+  }
+  return destinationAccount;
+}
+
+async function applyBalanceDelta(account, delta, dbTransaction) {
+  if (!account || delta === 0) return;
+  await account.increment("balance_minor", { by: delta, transaction: dbTransaction });
+}
+
+async function findLinkedTransferTransactions(userId, transaction) {
+  const metadata = getTransactionMetadata(transaction);
+  const groupId = metadata.transfer_group_id;
+  if (!groupId) return [transaction];
+
+  return Transaction.findAll({
+    where: {
+      user_id: userId,
+      [Op.or]: [
+        { transaction_id: transaction.transaction_id },
+        { metadata: { [Op.contains]: { transfer_group_id: groupId } } },
+      ],
+    },
+  });
+}
+
+async function createSavingsAllocateTransaction(userId, data, account, category, normalizedType) {
+  const currency = (data.currency || account.currency_code).toString().toUpperCase();
+  const currencyExists = await Currency.findByPk(currency);
+  if (!currencyExists) {
+    throw new ApiError(400, "Invalid currency code");
+  }
+
+  const timestamp = data.timestamp || new Date();
+  const { baseCurrency, amountBaseMinor, fxRate } = await computeFxSnapshot(userId, {
+    amountMinor: data.amount_minor,
+    currency,
+    account,
+    timestamp,
+  });
+
+  const metadata = {
+    ...(data.metadata && typeof data.metadata === "object" ? data.metadata : {}),
+    ...buildAllocateMetadata(),
+  };
+
+  const transaction = await Transaction.create({
+    user_id: userId,
+    account_id: data.account_id,
+    category_id: data.category_id,
+    amount_minor: data.amount_minor,
+    currency,
+    base_currency: baseCurrency,
+    amount_base_minor: amountBaseMinor,
+    fx_rate_id: fxRate.fx_rate_id,
+    type: normalizedType,
+    source: data.source || "manual",
+    description: data.description ?? "",
+    metadata,
+    timestamp,
+  });
+
+  return transaction;
+}
+
+async function createSavingsExternalTransfer(userId, data, account, category, normalizedType) {
+  const currency = (data.currency || account.currency_code).toString().toUpperCase();
+  const currencyExists = await Currency.findByPk(currency);
+  if (!currencyExists) {
+    throw new ApiError(400, "Invalid currency code");
+  }
+
+  const timestamp = data.timestamp || new Date();
+  const { baseCurrency, amountBaseMinor, fxRate } = await computeFxSnapshot(userId, {
+    amountMinor: data.amount_minor,
+    currency,
+    account,
+    timestamp,
+  });
+
+  const metadata = {
+    ...(data.metadata && typeof data.metadata === "object" ? data.metadata : {}),
+    ...buildExternalTransferMetadata(),
+  };
+
+  return sequelize.transaction(async (dbTransaction) => {
+    const transaction = await Transaction.create(
+      {
+        user_id: userId,
+        account_id: data.account_id,
+        category_id: data.category_id,
+        amount_minor: data.amount_minor,
+        currency,
+        base_currency: baseCurrency,
+        amount_base_minor: amountBaseMinor,
+        fx_rate_id: fxRate.fx_rate_id,
+        type: normalizedType,
+        source: data.source || "manual",
+        description: data.description ?? "",
+        metadata,
+        timestamp,
+      },
+      { transaction: dbTransaction }
+    );
+
+    const delta = getBalanceDelta(normalizedType, data.amount_minor, {
+      savings_mode: "transfer",
+      transfer_leg: "primary",
+    });
+    await applyBalanceDelta(account, delta, dbTransaction);
+
+    return transaction;
+  });
+}
+
+async function createSavingsTransferPair(userId, data, account, category, normalizedType) {
+  const destinationAccount = await validateSavingsTransferAccounts(
+    userId,
+    account,
+    data.destination_account_id
+  );
+
+  const currency = (data.currency || account.currency_code).toString().toUpperCase();
+  const currencyExists = await Currency.findByPk(currency);
+  if (!currencyExists) {
+    throw new ApiError(400, "Invalid currency code");
+  }
+
+  const timestamp = data.timestamp || new Date();
+  const transferGroupId = randomUUID();
+
+  return sequelize.transaction(async (dbTransaction) => {
+    const { baseCurrency, amountBaseMinor, fxRate } = await computeFxSnapshot(userId, {
+      amountMinor: data.amount_minor,
+      currency,
+      account,
+      timestamp,
+    });
+
+    const primaryMetadata = {
+      ...(data.metadata && typeof data.metadata === "object" ? data.metadata : {}),
+      ...buildPrimaryTransferMetadata({
+        transferGroupId,
+        destinationAccountId: destinationAccount.account_id,
+      }),
+    };
+
+    const primary = await Transaction.create(
+      {
+        user_id: userId,
+        account_id: data.account_id,
+        category_id: data.category_id,
+        amount_minor: data.amount_minor,
+        currency,
+        base_currency: baseCurrency,
+        amount_base_minor: amountBaseMinor,
+        fx_rate_id: fxRate.fx_rate_id,
+        type: normalizedType,
+        source: data.source || "manual",
+        description: data.description ?? "",
+        metadata: primaryMetadata,
+        timestamp,
+      },
+      { transaction: dbTransaction }
+    );
+
+    const destBaseCurrency = await resolveBaseCurrency(userId, destinationAccount.currency_code);
+    const destFxRate = await getOrFetchRate(currency, destBaseCurrency, new Date(timestamp).toISOString().slice(0, 10));
+    const fromCurrencyRow = await Currency.findByPk(currency);
+    const destBaseCurrencyRow = await Currency.findByPk(destBaseCurrency);
+    const destAmountBaseMinor = computeAmountBaseMinor(
+      data.amount_minor,
+      destFxRate.rate,
+      fromCurrencyRow.minor_unit,
+      destBaseCurrencyRow.minor_unit
+    );
+
+    await Transaction.create(
+      {
+        user_id: userId,
+        account_id: destinationAccount.account_id,
+        category_id: data.category_id,
+        amount_minor: data.amount_minor,
+        currency,
+        base_currency: destBaseCurrency,
+        amount_base_minor: destAmountBaseMinor,
+        fx_rate_id: destFxRate.fx_rate_id,
+        type: normalizedType,
+        source: "transfer",
+        description: `Transfer from ${account.name}`,
+        metadata: buildMirrorTransferMetadata({
+          transferGroupId,
+          primaryTransactionId: primary.transaction_id,
+        }),
+        timestamp,
+      },
+      { transaction: dbTransaction }
+    );
+
+    const primaryDelta = getBalanceDelta(normalizedType, data.amount_minor, {
+      savings_mode: "transfer",
+      transfer_leg: "primary",
+    });
+    const mirrorDelta = getBalanceDelta(normalizedType, data.amount_minor, {
+      savings_mode: "transfer",
+      transfer_leg: "mirror",
+    });
+
+    await applyBalanceDelta(account, primaryDelta, dbTransaction);
+    await applyBalanceDelta(destinationAccount, mirrorDelta, dbTransaction);
+
+    return primary;
+  });
+}
+
 /**
  * Create a transaction and store snapshot (base_currency, amount_base_minor, fx_rate_id). Updates account balance.
  */
@@ -100,21 +401,31 @@ async function createTransaction(userId, data) {
   }
 
   try {
-    const account = await Account.findOne({
-      where: { account_id: data.account_id, user_id: userId },
-    });
-    if (!account) {
-      throw new ApiError(404, "Account not found");
+    const account = await resolveAccount(userId, data.account_id);
+    if (!account.is_active) {
+      throw new ApiError(400, "Account is not active");
     }
 
-    const category = await Category.findOne({
-      where: {
-        category_id: data.category_id,
-        [Op.or]: [{ user_id: null }, { user_id: userId }],
-      },
-    });
-    if (!category) {
-      throw new ApiError(404, "Category not found");
+    const category = await resolveCategory(userId, data.category_id);
+
+    const normalizedType = normalizeTransactionType(data.type);
+    if (category.type && normalizeTransactionType(category.type) !== normalizedType) {
+      throw new ApiError(400, "Selected category type does not match transaction type");
+    }
+
+    if (normalizedType === "savings") {
+      const savingsMode = data.savings_mode === "transfer" ? "transfer" : "allocate";
+      if (savingsMode === "transfer") {
+        const transaction = data.destination_account_id
+          ? await createSavingsTransferPair(userId, data, account, category, normalizedType)
+          : await createSavingsExternalTransfer(userId, data, account, category, normalizedType);
+        logger.info({ userId, transactionId: transaction.transaction_id }, "Transfer savings created");
+        return transaction;
+      }
+
+      const transaction = await createSavingsAllocateTransaction(userId, data, account, category, normalizedType);
+      logger.info({ userId, transactionId: transaction.transaction_id }, "Allocate savings created");
+      return transaction;
     }
 
     const currency = (data.currency || account.currency_code).toString().toUpperCase();
@@ -123,23 +434,14 @@ async function createTransaction(userId, data) {
       throw new ApiError(400, "Invalid currency code");
     }
 
-    const baseCurrency = await resolveBaseCurrency(userId, account.currency_code);
-    const asOfDate = data.timestamp
-      ? new Date(data.timestamp).toISOString().slice(0, 10)
-      : new Date().toISOString().slice(0, 10);
+    const timestamp = data.timestamp || new Date();
+    const { baseCurrency, amountBaseMinor, fxRate } = await computeFxSnapshot(userId, {
+      amountMinor: data.amount_minor,
+      currency,
+      account,
+      timestamp,
+    });
 
-    const fxRate = await getOrFetchRate(currency, baseCurrency, asOfDate);
-
-    const fromCurrencyRow = await Currency.findByPk(currency);
-    const baseCurrencyRow = await Currency.findByPk(baseCurrency);
-    const amountBaseMinor = computeAmountBaseMinor(
-      data.amount_minor,
-      fxRate.rate,
-      fromCurrencyRow.minor_unit,
-      baseCurrencyRow.minor_unit
-    );
-
-    const normalizedType = normalizeTransactionType(data.type);
     const transaction = await Transaction.create({
       user_id: userId,
       account_id: data.account_id,
@@ -153,11 +455,11 @@ async function createTransaction(userId, data) {
       source: data.source || "manual",
       description: data.description ?? "",
       metadata: data.metadata ?? null,
-      timestamp: data.timestamp || new Date(),
+      timestamp,
     });
 
-    const balanceDelta = normalizedType === "expense" ? -Number(data.amount_minor) : Number(data.amount_minor);
-    await account.increment("balance_minor", { by: balanceDelta });
+    const balanceDelta = getBalanceDelta(normalizedType, data.amount_minor);
+    await applyBalanceDelta(account, balanceDelta);
 
     logger.info({ userId, transactionId: transaction.transaction_id }, "Transaction created");
     return transaction;
@@ -304,7 +606,7 @@ async function fetchTransactionSummary(userId, params = {}) {
     const where = buildTransactionsWhere(userId, params);
     const rows = await Transaction.findAll({
       where,
-      attributes: ["type", "amount_base_minor", "base_currency"],
+      attributes: ["type", "amount_base_minor", "base_currency", "metadata"],
       raw: true,
     });
 
@@ -330,7 +632,7 @@ async function fetchTransactionSummary(userId, params = {}) {
         bucket.income_minor += amountMinor;
       } else if (normalizedType === "expense") {
         bucket.expense_minor += amountMinor;
-      } else if (normalizedType === "savings") {
+      } else if (normalizedType === "savings" && isPrimarySavingsContribution(row)) {
         bucket.savings_minor += amountMinor;
       }
     }
@@ -400,6 +702,25 @@ async function fetchTransaction(userId, transactionId) {
   }
 }
 
+function isTransferSavingsTransaction(transaction) {
+  const metadata = getTransactionMetadata(transaction);
+  return normalizeTransactionType(transaction.type) === "savings" && getSavingsMode(metadata) === "transfer";
+}
+
+function assertTransferEditableFields(transaction, data) {
+  const metadata = getTransactionMetadata(transaction);
+  if (!isTransferSavingsTransaction(transaction) || !isInternalTransferSavings(metadata)) return;
+
+  const blockedFields = ["account_id", "amount_minor", "currency", "type", "category_id"];
+  const attempted = blockedFields.filter((field) => data[field] !== undefined);
+  if (attempted.length > 0) {
+    throw new ApiError(
+      400,
+      "Transfer savings cannot change amount, account, category, or type. Delete and recreate instead."
+    );
+  }
+}
+
 /**
  * Update transaction (only safe fields). Only owner can update.
  */
@@ -421,32 +742,21 @@ async function updateTransaction(userId, transactionId, data) {
       throw new ApiError(404, "Transaction not found");
     }
 
-    const currentAccount = await Account.findOne({
-      where: { account_id: transaction.account_id, user_id: userId },
-    });
-    if (!currentAccount) {
-      throw new ApiError(404, "Current account not found");
+    const metadata = getTransactionMetadata(transaction);
+    if (metadata.transfer_leg === "mirror") {
+      throw new ApiError(400, "Transfer mirror transactions cannot be edited directly");
     }
 
+    assertTransferEditableFields(transaction, data);
+
+    const currentAccount = await resolveAccount(userId, transaction.account_id);
+
     const nextAccountId = data.account_id ?? transaction.account_id;
-    const nextAccount = await Account.findOne({
-      where: { account_id: nextAccountId, user_id: userId },
-    });
-    if (!nextAccount) {
-      throw new ApiError(404, "Account not found");
-    }
+    const nextAccount = await resolveAccount(userId, nextAccountId);
 
     const nextType = normalizeTransactionType(data.type ?? transaction.type);
     const nextCategoryId = data.category_id ?? transaction.category_id;
-    const nextCategory = await Category.findOne({
-      where: {
-        category_id: nextCategoryId,
-        [Op.or]: [{ user_id: null }, { user_id: userId }],
-      },
-    });
-    if (!nextCategory) {
-      throw new ApiError(404, "Category not found");
-    }
+    const nextCategory = await resolveCategory(userId, nextCategoryId);
     if (nextCategory.type && normalizeTransactionType(nextCategory.type) !== nextType) {
       throw new ApiError(400, "Selected category type does not match transaction type");
     }
@@ -484,17 +794,12 @@ async function updateTransaction(userId, transactionId, data) {
     if (data.currency !== undefined || data.account_id !== undefined) allowed.currency = nextCurrency;
 
     if (shouldReprice) {
-      const baseCurrency = await resolveBaseCurrency(userId, nextAccount.currency_code);
-      const asOfDate = new Date(nextTimestamp).toISOString().slice(0, 10);
-      const fxRate = await getOrFetchRate(nextCurrency, baseCurrency, asOfDate);
-      const fromCurrencyRow = await Currency.findByPk(nextCurrency);
-      const baseCurrencyRow = await Currency.findByPk(baseCurrency);
-      const amountBaseMinor = computeAmountBaseMinor(
-        nextAmountMinor,
-        fxRate.rate,
-        fromCurrencyRow.minor_unit,
-        baseCurrencyRow.minor_unit
-      );
+      const { baseCurrency, amountBaseMinor, fxRate } = await computeFxSnapshot(userId, {
+        amountMinor: nextAmountMinor,
+        currency: nextCurrency,
+        account: nextAccount,
+        timestamp: nextTimestamp,
+      });
 
       allowed.account_id = nextAccountId;
       allowed.category_id = nextCategoryId;
@@ -507,19 +812,46 @@ async function updateTransaction(userId, transactionId, data) {
       allowed.timestamp = nextTimestamp;
     }
 
-    const oldDelta = getBalanceDelta(transaction.type, transaction.amount_minor);
-    const newDelta = shouldReprice ? getBalanceDelta(nextType, nextAmountMinor) : oldDelta;
+    const oldDelta = getBalanceDeltaFromTransaction(transaction);
+    const newDelta = shouldReprice
+      ? getBalanceDelta(nextType, nextAmountMinor, {
+          savings_mode: getSavingsMode(metadata),
+          transfer_leg: getTransferLeg(metadata),
+          metadata,
+        })
+      : oldDelta;
+
     if (currentAccount.account_id === nextAccount.account_id) {
       const deltaDiff = newDelta - oldDelta;
       if (deltaDiff !== 0) {
-        await currentAccount.increment("balance_minor", { by: deltaDiff });
+        await applyBalanceDelta(currentAccount, deltaDiff);
       }
     } else {
-      await currentAccount.increment("balance_minor", { by: -oldDelta });
-      await nextAccount.increment("balance_minor", { by: newDelta });
+      await applyBalanceDelta(currentAccount, -oldDelta);
+      await applyBalanceDelta(nextAccount, newDelta);
     }
 
     await transaction.update(allowed);
+
+    if (
+      isTransferSavingsTransaction(transaction) &&
+      isInternalTransferSavings(metadata) &&
+      data.timestamp !== undefined
+    ) {
+      const groupId = metadata.transfer_group_id;
+      if (groupId) {
+        await Transaction.update(
+          { timestamp: data.timestamp },
+          {
+            where: {
+              user_id: userId,
+              metadata: { [Op.contains]: { transfer_group_id: groupId, transfer_leg: "mirror" } },
+            },
+          }
+        );
+      }
+    }
+
     const updatedTransaction = await Transaction.findOne({
       where: { transaction_id: transactionId, user_id: userId },
       include: [accountInclude, fxRateInclude, categoryInclude],
@@ -554,15 +886,20 @@ async function deleteTransaction(userId, transactionId) {
       throw new ApiError(404, "Transaction not found");
     }
 
-    const account = await Account.findByPk(transaction.account_id);
-    if (account) {
-      const normalizedType = normalizeTransactionType(transaction.type);
-      const reverseDelta = normalizedType === "expense" ? Number(transaction.amount_minor) : -Number(transaction.amount_minor);
-      await account.increment("balance_minor", { by: reverseDelta });
-    }
+    const linked = await findLinkedTransferTransactions(userId, transaction);
 
-    await transaction.destroy();
-    logger.info({ userId, transactionId }, "Transaction deleted");
+    await sequelize.transaction(async (dbTransaction) => {
+      for (const leg of linked) {
+        const account = await Account.findByPk(leg.account_id, { transaction: dbTransaction });
+        if (account) {
+          const reverseDelta = -getBalanceDeltaFromTransaction(leg);
+          await applyBalanceDelta(account, reverseDelta, dbTransaction);
+        }
+        await leg.destroy({ transaction: dbTransaction });
+      }
+    });
+
+    logger.info({ userId, transactionId, deletedCount: linked.length }, "Transaction deleted");
   } catch (err) {
     if (err instanceof ApiError) throw err;
     throw handleServerError(err, "Error deleting transaction", 500);
@@ -578,4 +915,5 @@ export {
   deleteTransaction,
   resolveBaseCurrency,
   computeAmountBaseMinor,
+  isPrimarySavingsContribution,
 };

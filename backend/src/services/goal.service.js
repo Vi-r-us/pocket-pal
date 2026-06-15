@@ -2,6 +2,7 @@ import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
 import { Op } from "sequelize";
+import { isPrimarySavingsContribution } from "../utils/savingsTransaction.js";
 import { Category, Currency, Goal, Transaction } from "../models/index.js";
 import { getOrFetchRate } from "./fx.service.js";
 import { createLog } from "./log.service.js";
@@ -176,11 +177,12 @@ async function listGoals(userId) {
           // type: "savings",
           timestamp: { [Op.between]: [sanitizeDate(startDate), sanitizeDate(endDate)] },
         },
-        attributes: ["transaction_id", "amount_base_minor", "base_currency", "timestamp"],
+        attributes: ["transaction_id", "amount_base_minor", "base_currency", "timestamp", "metadata"],
         raw: true,
       });
 
-      const { progress_minor } = await computeGoalProgress(goal, transactions, false);
+      const primaryTransactions = transactions.filter(isPrimarySavingsContribution);
+      const { progress_minor } = await computeGoalProgress(goal, primaryTransactions, false);
 
       result.push({
         public_id: goal.public_id,
@@ -240,12 +242,17 @@ async function getGoalDetail(userId, publicId) {
         type: "savings",
         timestamp: { [Op.between]: [sanitizeDate(startDate), sanitizeDate(endDate)] },
       },
-      attributes: ["transaction_id", "amount_base_minor", "base_currency", "timestamp", "description"],
+      attributes: ["transaction_id", "amount_base_minor", "base_currency", "timestamp", "description", "metadata"],
       order: [["timestamp", "ASC"]],
       raw: true,
     });
 
-    const { progress_minor, contributing_transactions } = await computeGoalProgress(goal, transactions, true);
+    const primaryTransactions = transactions.filter(isPrimarySavingsContribution);
+    const { progress_minor, contributing_transactions } = await computeGoalProgress(
+      goal,
+      primaryTransactions,
+      true
+    );
 
     return {
       public_id: goal.public_id,

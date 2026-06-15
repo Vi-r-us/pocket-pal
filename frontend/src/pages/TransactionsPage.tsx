@@ -76,6 +76,19 @@ const TYPE_AMOUNT_TEXT_CLASSES: Record<TransactionType, string> = {
 
 const formatSourceLabel = (source: string) => source.charAt(0).toUpperCase() + source.slice(1)
 
+const getSavingsTransferBadgeLabel = (metadata: Record<string, unknown> | null | undefined) => {
+  if (!metadata || metadata.savings_mode !== "transfer") return null
+  if (metadata.transfer_leg === "mirror") return "Transfer in"
+  if (
+    metadata.transfer_destination === "external" ||
+    (metadata.transfer_leg === "primary" && metadata.destination_account_id == null)
+  ) {
+    return "External"
+  }
+  if (metadata.transfer_leg === "primary") return "Transfer"
+  return null
+}
+
 const toIntegerOrNull = (value: string) => {
   const normalized = value.trim()
   if (!normalized) return null
@@ -255,6 +268,11 @@ const MobileTransactionCards = ({
                 <Badge variant="outline" className={TYPE_BADGE_CLASSES[row.type]}>
                   {TYPE_LABELS[row.type]}
                 </Badge>
+                {getSavingsTransferBadgeLabel(row.raw_transaction.metadata) ? (
+                  <Badge variant="secondary" className="rounded-full">
+                    {getSavingsTransferBadgeLabel(row.raw_transaction.metadata)}
+                  </Badge>
+                ) : null}
                 <Badge variant="ghost">{formatSourceLabel(row.source)}</Badge>
               </div>
 
@@ -771,16 +789,24 @@ export const TransactionsPage = () => {
         accessorKey: "type",
         header: "Type / Source",
         enableSorting: false,
-        cell: ({ row }) => (
-          <div className="flex min-w-[6.25rem] flex-wrap items-center gap-2">
-            <Badge variant="outline" className={TYPE_BADGE_CLASSES[row.original.type]}>
-              {TYPE_LABELS[row.original.type]}
-            </Badge>
-            <Badge variant="ghost" className="text-wrap text-ellipsis">
-              {formatSourceLabel(row.original.source)}
-            </Badge>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const transferBadge = getSavingsTransferBadgeLabel(row.original.raw_transaction.metadata)
+          return (
+            <div className="flex min-w-[6.25rem] flex-wrap items-center gap-2">
+              <Badge variant="outline" className={TYPE_BADGE_CLASSES[row.original.type]}>
+                {TYPE_LABELS[row.original.type]}
+              </Badge>
+              {transferBadge ? (
+                <Badge variant="secondary" className="rounded-full">
+                  {transferBadge}
+                </Badge>
+              ) : null}
+              <Badge variant="ghost" className="text-wrap text-ellipsis">
+                {formatSourceLabel(row.original.source)}
+              </Badge>
+            </div>
+          )
+        },
       },
       {
         accessorKey: "amount_minor",

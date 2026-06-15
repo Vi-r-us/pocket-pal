@@ -105,6 +105,7 @@ async function main() {
       source: SOURCES[randomInt(0, SOURCES.length - 1)],
       description: `Mock seed ${i + 1}/${count}`,
       timestamp,
+      ...(type === "savings" ? { savings_mode: "allocate" } : {}),
     };
 
     try {
