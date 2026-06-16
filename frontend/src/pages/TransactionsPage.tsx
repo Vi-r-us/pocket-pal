@@ -1,5 +1,5 @@
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useState } from "react"
-import { ArrowLeftRight, BanknoteArrowDown, BanknoteArrowUp, Filter, Hash, Loader2, Search, Trash2 } from "lucide-react"
+import { ArrowLeftRight, BanknoteArrowDown, BanknoteArrowUp, Filter, Hash, Loader2, Search, Trash2, X } from "lucide-react"
 import { type ColumnDef, functionalUpdate, type OnChangeFn, type SortingState } from "@tanstack/react-table"
 import {
   CreateTransactionModal,
@@ -8,9 +8,12 @@ import {
   TransactionsFiltersSheet,
 } from "@/features/transactions/components"
 import { MetricStatCard } from "@/components/cards/MetricStatCard"
+import { MonthPickerField } from "@/components/MonthPickerField"
 import { DataTableBase, DataTablePagination, DataTableToolbar } from "@/components/data-table"
 import { GridItem } from "@/components/layout/GridItem"
 import { AppModal } from "@/components/modals"
+import { usePageHeaderControls } from "@/contexts/PageHeaderControlsContext"
+import { buildTransactionQueryParams } from "@/features/transactions/utils/queryParams"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,6 +24,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { api } from "@/lib/api"
 import { APP_HEADER_PRIMARY_ACTION_EVENT, type AppHeaderPrimaryActionDetail } from "@/constants/headerActions"
 import { getInlineErrorMessage } from "@/lib/errors/normalize"
+import { inputValueToYyyyMm, yyyyMmToInputValue } from "@/lib/month"
 import { resolveCategoryIcon } from "@/lib/categoryIcons"
 import { cn } from "@/lib/utils"
 import { DEFAULT_ADVANCED_FILTERS } from "@/types/transaction"
@@ -32,7 +36,6 @@ import type {
   TransactionListItem,
   TransactionSummaryData,
   TransactionsListData,
-  TransactionsQueryParams,
   TransactionTypeFilter,
   TransactionType,
 } from "@/types/transaction"
@@ -97,14 +100,19 @@ const toIntegerOrNull = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-const getActiveFilterCount = (filters: AdvancedFilterState) => {
+const getActiveFilterCount = (
+  filters: AdvancedFilterState,
+  isMonthFilterActive: boolean,
+) => {
   let count = 0
   if (filters.type !== "all") count += 1
   if (filters.source !== "all") count += 1
   if (filters.account_id) count += 1
   if (filters.category_id) count += 1
-  if (filters.date_from) count += 1
-  if (filters.date_to) count += 1
+  if (!isMonthFilterActive) {
+    if (filters.date_from) count += 1
+    if (filters.date_to) count += 1
+  }
   if (filters.amount_min) count += 1
   if (filters.amount_max) count += 1
   return count
@@ -321,6 +329,7 @@ export const TransactionsPage = () => {
   const [summary, setSummary] = useState<TransactionSummaryData | null>(null)
   const [errorMessage, setErrorMessage] = useState("")
   const [refreshKey, setRefreshKey] = useState(0)
+  const [selectedYyyyMm, setSelectedYyyyMm] = useState<number | null>(null)
 
   const sortBy = useMemo<"timestamp" | "amount_minor">(() => {
     const activeSort = sorting[0]
@@ -333,6 +342,45 @@ export const TransactionsPage = () => {
     if (!activeSort) return "desc"
     return activeSort.desc ? "desc" : "asc"
   }, [sorting])
+
+  const transactionsHeaderControls = useMemo(
+    () => ({
+      toolbar: (
+        <div className="flex items-center gap-2">
+          <MonthPickerField
+            id="transactions-month-picker"
+            className="w-full min-w-0 sm:w-[200px]"
+            value={selectedYyyyMm ? yyyyMmToInputValue(selectedYyyyMm) : ""}
+            placeholder="All time"
+            onChange={(next) => {
+              const parsed = inputValueToYyyyMm(next)
+              if (parsed === null) return
+              setSelectedYyyyMm(parsed)
+              setPage(1)
+            }}
+            aria-label="Filter transactions by month"
+          />
+          {selectedYyyyMm ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => {
+                setSelectedYyyyMm(null)
+                setPage(1)
+              }}
+              aria-label="Clear month filter"
+            >
+              <X className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+        </div>
+      ),
+    }),
+    [selectedYyyyMm],
+  )
+
+  usePageHeaderControls(transactionsHeaderControls)
 
   useEffect(() => {
     const handleHeaderPrimaryAction = (event: Event) => {
@@ -397,47 +445,11 @@ export const TransactionsPage = () => {
     let isCurrent = true
 
     const fetchTransactionsSummary = async () => {
-      const params: TransactionsQueryParams = {}
-
-      if (appliedFilters.type !== "all") {
-        params.type = appliedFilters.type
-      }
-      if (searchQuery) {
-        params.q = searchQuery
-      }
-      if (appliedFilters.source !== "all") {
-        params.source = appliedFilters.source
-      }
-      if (appliedFilters.account_id) {
-        const accountId = toIntegerOrNull(appliedFilters.account_id)
-        if (accountId !== null) {
-          params.account_id = accountId
-        }
-      }
-      if (appliedFilters.category_id) {
-        const categoryId = toIntegerOrNull(appliedFilters.category_id)
-        if (categoryId !== null) {
-          params.category_id = categoryId
-        }
-      }
-      if (appliedFilters.amount_min) {
-        const amountMin = toIntegerOrNull(appliedFilters.amount_min)
-        if (amountMin !== null) {
-          params.amount_min = amountMin
-        }
-      }
-      if (appliedFilters.amount_max) {
-        const amountMax = toIntegerOrNull(appliedFilters.amount_max)
-        if (amountMax !== null) {
-          params.amount_max = amountMax
-        }
-      }
-      if (appliedFilters.date_from) {
-        params.date_from = appliedFilters.date_from
-      }
-      if (appliedFilters.date_to) {
-        params.date_to = appliedFilters.date_to
-      }
+      const params = buildTransactionQueryParams({
+        appliedFilters,
+        searchQuery,
+        selectedYyyyMm,
+      })
 
       try {
         const response = await api.get<ApiSuccess<TransactionSummaryData>>("/transactions/summary", { params })
@@ -454,7 +466,7 @@ export const TransactionsPage = () => {
     return () => {
       isCurrent = false
     }
-  }, [appliedFilters, refreshKey, searchQuery])
+  }, [appliedFilters, refreshKey, searchQuery, selectedYyyyMm])
 
   useEffect(() => {
     let isCurrent = true
@@ -462,60 +474,17 @@ export const TransactionsPage = () => {
     const fetchTransactions = async () => {
       setIsLoading(true)
 
-      const params: TransactionsQueryParams = {
-        page,
-        limit,
-        sort_by: sortBy,
-        sort_order: sortOrder,
-      }
-
-      if (appliedFilters.type !== "all") {
-        params.type = appliedFilters.type
-      }
-
-      if (searchQuery) {
-        params.q = searchQuery
-      }
-
-      if (appliedFilters.source !== "all") {
-        params.source = appliedFilters.source
-      }
-
-      if (appliedFilters.account_id) {
-        const accountId = toIntegerOrNull(appliedFilters.account_id)
-        if (accountId !== null) {
-          params.account_id = accountId
-        }
-      }
-
-      if (appliedFilters.category_id) {
-        const categoryId = toIntegerOrNull(appliedFilters.category_id)
-        if (categoryId !== null) {
-          params.category_id = categoryId
-        }
-      }
-
-      if (appliedFilters.amount_min) {
-        const amountMin = toIntegerOrNull(appliedFilters.amount_min)
-        if (amountMin !== null) {
-          params.amount_min = amountMin
-        }
-      }
-
-      if (appliedFilters.amount_max) {
-        const amountMax = toIntegerOrNull(appliedFilters.amount_max)
-        if (amountMax !== null) {
-          params.amount_max = amountMax
-        }
-      }
-
-      if (appliedFilters.date_from) {
-        params.date_from = appliedFilters.date_from
-      }
-
-      if (appliedFilters.date_to) {
-        params.date_to = appliedFilters.date_to
-      }
+      const params = buildTransactionQueryParams({
+        appliedFilters,
+        searchQuery,
+        selectedYyyyMm,
+        pagination: {
+          page,
+          limit,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        },
+      })
 
       try {
         const response = await api.get<ApiSuccess<TransactionsListData>>("/transactions", { params })
@@ -554,7 +523,7 @@ export const TransactionsPage = () => {
     return () => {
       isCurrent = false
     }
-  }, [appliedFilters, limit, page, refreshKey, searchQuery, sortBy, sortOrder])
+  }, [appliedFilters, limit, page, refreshKey, searchQuery, selectedYyyyMm, sortBy, sortOrder])
 
   const handleTypeFilterChange = (value: string) => {
     const nextType = (value || "all") as TransactionTypeFilter
@@ -712,7 +681,10 @@ export const TransactionsPage = () => {
   }
 
   const isInitialLoading = isLoading && rows.length === 0
-  const activeFilterCount = useMemo(() => getActiveFilterCount(appliedFilters), [appliedFilters])
+  const activeFilterCount = useMemo(
+    () => getActiveFilterCount(appliedFilters, selectedYyyyMm !== null),
+    [appliedFilters, selectedYyyyMm],
+  )
   const summaryCurrency = summary?.totals.currency_code ?? null
   const hasMixedSummaryCurrency = !summaryCurrency && (summary?.currency_breakdown.length ?? 0) > 1
   const incomeValue = summaryCurrency ? toCurrency(summary?.totals.income_minor ?? 0, summaryCurrency) : "—"
@@ -976,6 +948,7 @@ export const TransactionsPage = () => {
               filterValidationError={filterValidationError}
               filterOptionsError={filterOptionsError}
               isLoadingFilterOptions={isLoadingFilterOptions}
+              isMonthFilterActive={selectedYyyyMm !== null}
               accountOptions={accountOptions}
               categoryOptions={categoryOptions}
             />
