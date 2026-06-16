@@ -126,13 +126,15 @@ const buildDescription = (payee: string, notes: string) => {
   return ""
 }
 
-const parseSavingsFormFields = (initialTransaction: TransactionListItem | null) => {
+const parseSavingsFormFields = (
+  initialTransaction: TransactionListItem | null,
+): { savingsMode: SavingsMode; destinationAccountId: string } => {
   const metadata = initialTransaction?.metadata
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return { savingsMode: "allocate" as SavingsMode, destinationAccountId: "" }
+    return { savingsMode: "allocate", destinationAccountId: "" }
   }
 
-  const savingsMode = metadata.savings_mode === "transfer" ? "transfer" : "allocate"
+  const savingsMode: SavingsMode = metadata.savings_mode === "transfer" ? "transfer" : "allocate"
   const destinationAccountId =
     metadata.destination_account_id != null
       ? String(metadata.destination_account_id)
