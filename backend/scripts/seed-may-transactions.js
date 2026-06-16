@@ -144,14 +144,16 @@ async function main() {
       continue;
     }
 
+    const txType = categoryTypeToTransactionType(row.type);
     const payload = {
       account_id: accountId,
       category_id: category.getDataValue("category_id"),
       amount_minor: majorToMinor(row.major),
-      type: categoryTypeToTransactionType(row.type),
+      type: txType,
       source: "manual",
       description: row.description,
       timestamp: mayTimestamp(year, row.day),
+      ...(txType === "savings" ? { savings_mode: "allocate" } : {}),
     };
 
     try {

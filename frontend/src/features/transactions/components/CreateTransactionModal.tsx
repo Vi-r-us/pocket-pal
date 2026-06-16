@@ -23,6 +23,7 @@ import type {
   AccountFilterOption,
   ApiSuccess,
   CategoryFilterOption,
+  SavingsMode,
   TransactionListItem,
   TransactionType,
 } from "@/types/transaction"
@@ -46,6 +47,7 @@ type FormErrors = {
   amount?: string
   account_id?: string
   category_id?: string
+  destination_account_id?: string
 }
 
 type FormState = {
@@ -58,9 +60,14 @@ type FormState = {
   timeValue: string
   accountId: string
   categoryId: string
+  savingsMode: SavingsMode
+  destinationAccountId: string
 }
 
 const STEP_ORDER: StepKey[] = ["details", "more-details", "review"]
+
+/** Sentinel value for outbound savings (money left the account, not to another PocketPal account). */
+const EXTERNAL_TRANSFER_DESTINATION_VALUE = "__external__"
 
 const getStepIndex = (step: StepKey) => STEP_ORDER.indexOf(step)
 
@@ -119,6 +126,23 @@ const buildDescription = (payee: string, notes: string) => {
   return ""
 }
 
+const parseSavingsFormFields = (initialTransaction: TransactionListItem | null) => {
+  const metadata = initialTransaction?.metadata
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return { savingsMode: "allocate" as SavingsMode, destinationAccountId: "" }
+  }
+
+  const savingsMode = metadata.savings_mode === "transfer" ? "transfer" : "allocate"
+  const destinationAccountId =
+    metadata.destination_account_id != null
+      ? String(metadata.destination_account_id)
+      : savingsMode === "transfer"
+        ? EXTERNAL_TRANSFER_DESTINATION_VALUE
+        : ""
+
+  return { savingsMode, destinationAccountId }
+}
+
 const buildInitialFormState = (
   mode: TransactionModalMode,
   initialTransaction: TransactionListItem | null,
@@ -135,8 +159,12 @@ const buildInitialFormState = (
       timeValue: toTimeString(now),
       accountId: "",
       categoryId: "",
+      savingsMode: "allocate",
+      destinationAccountId: "",
     }
   }
+
+  const savingsFields = parseSavingsFormFields(initialTransaction)
 
   const descriptionParts = parseDescriptionParts(initialTransaction.description)
   const parsedTimestamp = new Date(initialTransaction.timestamp)
@@ -151,6 +179,8 @@ const buildInitialFormState = (
     timeValue: hasValidTimestamp ? toTimeString(parsedTimestamp) : toTimeString(now),
     accountId: String(initialTransaction.account?.account_id ?? ""),
     categoryId: String(initialTransaction.category?.category_id ?? ""),
+    savingsMode: savingsFields.savingsMode,
+    destinationAccountId: savingsFields.destinationAccountId,
   }
 }
 
@@ -221,7 +251,36 @@ export const CreateTransactionModal = ({
 
   const selectedAccount = accountOptions.find((account) => String(account.account_id) === form.accountId)
   const selectedCategory = filteredCategories.find((category) => String(category.category_id) === form.categoryId)
+  const selectedDestinationAccount = accountOptions.find(
+    (account) => String(account.account_id) === form.destinationAccountId,
+  )
   const selectedCurrencyCode = selectedAccount?.currency_code || ""
+  const isExternalTransferDestination = form.destinationAccountId === EXTERNAL_TRANSFER_DESTINATION_VALUE
+  const isTransferLocked =
+    mode === "edit" &&
+    initialTransaction?.metadata != null &&
+    typeof initialTransaction.metadata === "object" &&
+    !Array.isArray(initialTransaction.metadata) &&
+    initialTransaction.metadata.savings_mode === "transfer" &&
+    initialTransaction.metadata.destination_account_id != null
+
+  const destinationAccountOptions = useMemo(() => {
+    if (!form.accountId || !selectedCurrencyCode) return []
+
+    return accountOptions
+      .filter(
+        (account) =>
+          account.is_active !== false &&
+          String(account.account_id) !== form.accountId &&
+          account.currency_code === selectedCurrencyCode,
+      )
+      .sort((left, right) => {
+        const leftIsSavings = left.type === "savings" ? 0 : 1
+        const rightIsSavings = right.type === "savings" ? 0 : 1
+        if (leftIsSavings !== rightIsSavings) return leftIsSavings - rightIsSavings
+        return left.name.localeCompare(right.name)
+      })
+  }, [accountOptions, form.accountId, selectedCurrencyCode])
   const currentStepIndex = getStepIndex(form.step)
 
   const getStepTriggerClassName = (step: StepKey) => {
@@ -262,6 +321,9 @@ export const CreateTransactionModal = ({
       ...previous,
       type: nextType,
       categoryId: shouldClearCategory ? "" : previous.categoryId,
+      ...(nextType !== "savings"
+        ? { savingsMode: "allocate" as SavingsMode, destinationAccountId: "" }
+        : {}),
     }))
   }
 
@@ -281,6 +343,15 @@ export const CreateTransactionModal = ({
       }
       if (!form.categoryId) {
         nextErrors.category_id = "Select a category"
+      }
+      if (
+        form.type === "savings" &&
+        form.savingsMode === "transfer" &&
+        !isTransferLocked &&
+        !isExternalTransferDestination &&
+        !form.destinationAccountId
+      ) {
+        nextErrors.destination_account_id = "Select a destination account"
       }
     }
 
@@ -335,6 +406,26 @@ export const CreateTransactionModal = ({
         <span className="text-muted-foreground">Account</span>
         <span className="text-right">{selectedAccount?.name || "—"}</span>
       </div>
+      {form.type === "savings" ? (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Saving method</span>
+            <span className="text-right">
+              {form.savingsMode === "transfer" ? "Transfer to another account" : "Allocate on this account"}
+            </span>
+          </div>
+          {form.savingsMode === "transfer" ? (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">To account</span>
+              <span className="text-right">
+                {isExternalTransferDestination
+                  ? "External / elsewhere"
+                  : selectedDestinationAccount?.name || "—"}
+              </span>
+            </div>
+          ) : null}
+        </>
+      ) : null}
       <div className="grid gap-1">
         <span className="text-muted-foreground">Description to save</span>
         <span className="rounded-md border bg-background px-2 py-1.5 text-xs">
@@ -476,7 +567,19 @@ export const CreateTransactionModal = ({
 
       <div className="grid gap-1.5">
         <Label htmlFor="tx-account">Account</Label>
-        <Select value={form.accountId || undefined} onValueChange={(value) => setForm((previous) => ({ ...previous, accountId: value }))}>
+        <Select
+          value={form.accountId || undefined}
+          onValueChange={(value) =>
+            setForm((previous) => ({
+              ...previous,
+              accountId: value,
+              destinationAccountId:
+                previous.destinationAccountId === value
+                  ? EXTERNAL_TRANSFER_DESTINATION_VALUE
+                  : previous.destinationAccountId,
+            }))
+          }
+        >
           <SelectTrigger id="tx-account" className={cn(errors.account_id && "border-destructive", "w-full")}>
             <SelectValue placeholder={isLoadingOptions ? "Loading accounts..." : "Select account"} />
           </SelectTrigger>
@@ -490,6 +593,108 @@ export const CreateTransactionModal = ({
         </Select>
         {errors.account_id ? <p className="text-destructive text-xs">{errors.account_id}</p> : null}
       </div>
+
+      {form.type === "savings" ? (
+        <div className="grid gap-3 rounded-lg border bg-muted/20 p-4">
+          <div className="grid gap-2">
+            <Label>Saving method</Label>
+            <div className="inline-flex w-full rounded-lg border bg-muted/40 p-1">
+              <button
+                type="button"
+                disabled={isTransferLocked}
+                className={cn(
+                  "h-9 flex-1 rounded-md px-2 text-sm font-medium transition-colors",
+                  form.savingsMode === "allocate"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                  isTransferLocked && "cursor-not-allowed opacity-60",
+                )}
+                onClick={() =>
+                  setForm((previous) => ({
+                    ...previous,
+                    savingsMode: "allocate",
+                    destinationAccountId: "",
+                  }))
+                }
+              >
+                Allocate on this account
+              </button>
+              <button
+                type="button"
+                disabled={isTransferLocked}
+                className={cn(
+                  "h-9 flex-1 rounded-md px-2 text-sm font-medium transition-colors",
+                  form.savingsMode === "transfer"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                  isTransferLocked && "cursor-not-allowed opacity-60",
+                )}
+                onClick={() =>
+                  setForm((previous) => ({
+                    ...previous,
+                    savingsMode: "transfer",
+                    destinationAccountId: EXTERNAL_TRANSFER_DESTINATION_VALUE,
+                  }))
+                }
+              >
+                Transfer to another account
+              </button>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {form.savingsMode === "allocate"
+                ? "Track savings without changing this account balance."
+                : isExternalTransferDestination
+                  ? "Money left this account for an external investment or payee (broker, SIP, another person)."
+                  : "Money moved to one of your other PocketPal accounts."}
+            </p>
+          </div>
+
+          {form.savingsMode === "transfer" ? (
+            <div className="grid gap-1.5">
+              <Label htmlFor="tx-destination-account">To account</Label>
+              <Select
+                value={form.destinationAccountId || EXTERNAL_TRANSFER_DESTINATION_VALUE}
+                disabled={isTransferLocked}
+                onValueChange={(value) =>
+                  setForm((previous) => ({ ...previous, destinationAccountId: value }))
+                }
+              >
+                <SelectTrigger
+                  id="tx-destination-account"
+                  className={cn(errors.destination_account_id && "border-destructive", "w-full")}
+                >
+                  <SelectValue
+                    placeholder={
+                      !form.accountId
+                        ? "Select source account first"
+                        : "Select where the money went"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EXTERNAL_TRANSFER_DESTINATION_VALUE}>
+                    External / elsewhere (default)
+                  </SelectItem>
+                  {destinationAccountOptions.map((account) => (
+                    <SelectItem key={account.account_id} value={String(account.account_id)}>
+                      {account.name}
+                      {account.type === "savings" ? " (Savings)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.destination_account_id ? (
+                <p className="text-destructive text-xs">{errors.destination_account_id}</p>
+              ) : null}
+              {isTransferLocked ? (
+                <p className="text-muted-foreground text-xs">
+                  Transfer destination cannot be changed. Delete and recreate to move funds elsewhere.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-1.5">
         <Label htmlFor="tx-notes">Notes (optional)</Label>
@@ -536,6 +741,14 @@ export const CreateTransactionModal = ({
         source,
         description,
         ...(timestampIso ? { timestamp: timestampIso } : {}),
+        ...(form.type === "savings" && mode !== "edit"
+          ? {
+              savings_mode: form.savingsMode,
+              ...(form.savingsMode === "transfer" && !isExternalTransferDestination
+                ? { destination_account_id: Number(form.destinationAccountId) }
+                : {}),
+            }
+          : {}),
       }
 
       if (mode === "edit") {

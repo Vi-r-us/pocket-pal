@@ -227,6 +227,15 @@ const updateAccount = async (userId, accountId, updateData) => {
     if (normalizedUpdateData.notes === "") normalizedUpdateData.notes = null;
     if (normalizedUpdateData.icon_key === "") normalizedUpdateData.icon_key = null;
 
+    if (normalizedUpdateData.opening_balance_minor !== undefined) {
+      const oldOpening = Number(account.opening_balance_minor);
+      const newOpening = Number(normalizedUpdateData.opening_balance_minor);
+      const openingDelta = newOpening - oldOpening;
+      if (openingDelta !== 0) {
+        normalizedUpdateData.balance_minor = Number(account.balance_minor) + openingDelta;
+      }
+    }
+
     const previousState = getState(account, normalizedUpdateData);
     await account.update(normalizedUpdateData);
     const newState = getState(account, normalizedUpdateData);

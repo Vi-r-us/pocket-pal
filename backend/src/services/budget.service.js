@@ -2,6 +2,7 @@ import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
 import { Op } from "sequelize";
+import { isPrimarySavingsContribution } from "../utils/savingsTransaction.js";
 import {
   Account,
   Budget,
@@ -274,7 +275,7 @@ async function getBudgetSummary(userId, yyyyMm) {
         timestamp: { [Op.between]: [startDate, endDate] },
         type: { [Op.in]: ["expense", "income", "savings"] },
       },
-      attributes: ["category_id", "base_currency", "amount_base_minor", "type"],
+      attributes: ["category_id", "base_currency", "amount_base_minor", "type", "metadata"],
       raw: true,
     });
 
@@ -287,7 +288,7 @@ async function getBudgetSummary(userId, yyyyMm) {
       if (!spentByCategory[catId][curr]) spentByCategory[catId][curr] = 0;
       spentByCategory[catId][curr] += Number(tx.amount_base_minor);
 
-      if (tx.type === "savings") {
+      if (tx.type === "savings" && isPrimarySavingsContribution(tx)) {
         if (!savingsByCurrency[curr]) savingsByCurrency[curr] = 0;
         savingsByCurrency[curr] += Number(tx.amount_base_minor);
       }

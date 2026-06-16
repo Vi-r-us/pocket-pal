@@ -1,6 +1,9 @@
 import type { ApiEnvelope } from '@/types/api'
+import type { AccountType } from '@/types/account'
 
 export type TransactionType = "income" | "expense" | "savings"
+
+export type SavingsMode = "allocate" | "transfer"
 
 export type TransactionSource = "manual" | "recurring" | "transfer" | "external"
 export type TransactionTypeFilter = "all" | TransactionType
@@ -112,6 +115,7 @@ export type AccountFilterOption = {
   account_id: number
   name: string
   currency_code?: string
+  type?: AccountType
   is_active?: boolean
 }
 

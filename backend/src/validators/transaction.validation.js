@@ -1,5 +1,10 @@
 import Joi from "joi";
-import { VALID_TRANSACTION_TYPES, VALID_TRANSACTION_TYPE_INPUTS, VALID_TRANSACTION_SOURCES } from "../constants/constants.js";
+import {
+  VALID_TRANSACTION_TYPES,
+  VALID_TRANSACTION_TYPE_INPUTS,
+  VALID_TRANSACTION_SOURCES,
+} from "../constants/constants.js";
+import { VALID_SAVINGS_MODES } from "../utils/savingsTransaction.js";
 
 /** Schema for creating a transaction. Currency comes from account if not provided. */
 const createTransactionSchema = Joi.object({
@@ -41,7 +46,46 @@ const createTransactionSchema = Joi.object({
   timestamp: Joi.date().iso().optional().messages({
     "date.format": "timestamp must be in ISO 8601 format (e.g. 2026-02-16 or 2026-02-16T10:30:00.000Z)",
   }),
-}).options({ convert: true });
+  savings_mode: Joi.string()
+    .lowercase()
+    .trim()
+    .valid(...VALID_SAVINGS_MODES)
+    .optional()
+    .default("allocate")
+    .messages({
+      "any.only": `savings_mode must be one of: ${VALID_SAVINGS_MODES.join(", ")}`,
+    }),
+  destination_account_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "destination_account_id must be a number",
+  }),
+})
+  .custom((value, helpers) => {
+    const normalizedType = String(value.type || "").toLowerCase();
+    if (normalizedType !== "savings") {
+      return value;
+    }
+
+    const savingsMode = value.savings_mode || "allocate";
+    if (savingsMode === "allocate" && value.destination_account_id) {
+      return helpers.error("any.custom", {
+        message: "destination_account_id must not be set when savings_mode is allocate",
+      });
+    }
+    if (
+      savingsMode === "transfer" &&
+      value.destination_account_id &&
+      Number(value.destination_account_id) === Number(value.account_id)
+    ) {
+      return helpers.error("any.custom", {
+        message: "destination_account_id must differ from account_id",
+      });
+    }
+    return value;
+  })
+  .messages({
+    "any.custom": "{{#message}}",
+  })
+  .options({ convert: true });
 
 /** Used for GET list: optional filters (query params). */
 const fetchTransactionsSchema = Joi.object({

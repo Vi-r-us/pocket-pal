@@ -412,6 +412,7 @@ const commitTransactions = async ({ userId, rows, fieldMapping }) => {
         description: getMappedValue(row, fieldMapping, "description") || undefined,
         source: getMappedValue(row, fieldMapping, "source") || "external",
         timestamp: getMappedValue(row, fieldMapping, "timestamp") || undefined,
+        ...(String(type).toLowerCase() === "savings" ? { savings_mode: "allocate" } : {}),
       });
       imported += 1;
     } catch (error) {
