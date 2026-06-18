@@ -33,5 +33,6 @@ This repository contains **PocketPal**, a personal finance app (backend API + Re
 - Accessibility: keyboard support, labels, focus-visible styles.
 - Do not add new npm libraries without asking (see `.cursor/rules/dependencies-approval.mdc`).
 - Frontend code style follows `.cursor/rules/frontend-*.mdc` (no semicolons under `frontend/`, distinct from backend Prettier).
+- Design language (tokens, surfaces, typography, motion, component + data conventions): see `frontend/DESIGN_LANGUAGE.md` (enforced via `.cursor/rules/frontend-design-language.mdc`).
 
 For more detailed, file-scoped conventions, see `.cursor/rules/*.mdc`.

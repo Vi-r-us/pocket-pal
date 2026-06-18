@@ -8,6 +8,7 @@ import { Account, Category, CategoryGroup, Currency, FXRate, Transaction, User }
 import { getOrFetchRate } from "./fx.service.js";
 import { sanitizeDate } from "../utils/sanitize.js";
 import { TRANSACTION_TYPE_NORMALIZATION_MAP } from "../constants/constants.js";
+import { getBalanceDelta, getBalanceDeltaFromTransaction } from "../utils/accountBalance.js";
 import {
   buildAllocateMetadata,
   buildExternalTransferMetadata,
@@ -56,32 +57,6 @@ function getTypeWhereClause(type) {
   if (normalizedType === "income") return { [Op.in]: ["income", "deposit"] };
   if (normalizedType === "expense") return { [Op.in]: getExpenseLikeTypes() };
   return normalizedType;
-}
-
-function getBalanceDelta(type, amountMinor, context = {}) {
-  const normalizedType = normalizeTransactionType(type);
-  const amount = Number(amountMinor) || 0;
-  if (normalizedType === "expense") return -amount;
-  if (normalizedType === "income") return amount;
-  if (normalizedType === "savings") {
-    const savingsMode = context.savings_mode ?? getSavingsMode(context.metadata);
-    const transferLeg = context.transfer_leg ?? getTransferLeg(context.metadata);
-    if (savingsMode === "allocate") return 0;
-    if (savingsMode === "transfer") {
-      return transferLeg === "mirror" ? amount : -amount;
-    }
-    return 0;
-  }
-  return amount;
-}
-
-function getBalanceDeltaFromTransaction(transaction) {
-  const metadata = getTransactionMetadata(transaction);
-  return getBalanceDelta(transaction.type, transaction.amount_minor, {
-    savings_mode: getSavingsMode(metadata),
-    transfer_leg: getTransferLeg(metadata),
-    metadata,
-  });
 }
 
 function buildTransactionsWhere(userId, params = {}) {

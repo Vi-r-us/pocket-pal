@@ -36,6 +36,7 @@ type TransactionsFiltersSheetProps = {
   filterValidationError: string
   filterOptionsError: string
   isLoadingFilterOptions: boolean
+  isMonthFilterActive: boolean
   accountOptions: AccountFilterOption[]
   categoryOptions: CategoryFilterOption[]
 }
@@ -57,6 +58,7 @@ export const TransactionsFiltersSheet = ({
   filterValidationError,
   filterOptionsError,
   isLoadingFilterOptions,
+  isMonthFilterActive,
   accountOptions,
   categoryOptions,
 }: TransactionsFiltersSheetProps) => {
@@ -153,24 +155,32 @@ export const TransactionsFiltersSheet = ({
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="filter-date-from">Date from</Label>
-              <TransactionsDatePicker
-                id="filter-date-from"
-                value={draftFilters.date_from}
-                placeholder="Pick start date"
-                onChange={(value) => onDraftFilterChange("date_from", value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="filter-date-to">Date to</Label>
-              <TransactionsDatePicker
-                id="filter-date-to"
-                value={draftFilters.date_to}
-                placeholder="Pick end date"
-                onChange={(value) => onDraftFilterChange("date_to", value)}
-              />
-            </div>
+            {isMonthFilterActive ? (
+              <p className="col-span-full text-xs text-muted-foreground">
+                Date range is set by the header month picker.
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="filter-date-from">Date from</Label>
+                  <TransactionsDatePicker
+                    id="filter-date-from"
+                    value={draftFilters.date_from}
+                    placeholder="Pick start date"
+                    onChange={(value) => onDraftFilterChange("date_from", value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="filter-date-to">Date to</Label>
+                  <TransactionsDatePicker
+                    id="filter-date-to"
+                    value={draftFilters.date_to}
+                    placeholder="Pick end date"
+                    onChange={(value) => onDraftFilterChange("date_to", value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

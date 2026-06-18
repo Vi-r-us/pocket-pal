@@ -1,32 +1,32 @@
-import { useEffect, useRef, useState } from "react"
-import { format, parse } from "date-fns"
-import { ChevronDownIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { MonthPicker } from "@/components/ui/monthpicker"
+import { useEffect, useRef, useState } from "react";
+import { format, parse } from "date-fns";
+import { ChevronDownIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MonthPicker } from "@/components/ui/monthpicker";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 type MonthPickerFieldProps = {
-  id?: string
-  value: string
-  placeholder?: string
-  onChange: (value: string) => void
-  minDate?: Date
-  maxDate?: Date
-  className?: string
-  disabled?: boolean
-  "aria-label"?: string
-}
+  id?: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  minDate?: Date;
+  maxDate?: Date;
+  className?: string;
+  disabled?: boolean;
+  "aria-label"?: string;
+};
 
 const toDate = (value: string) => {
-  if (!value) return undefined
-  const parsed = parse(value, "yyyy-MM", new Date())
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed
-}
+  if (!value) return undefined;
+  const parsed = parse(value, "yyyy-MM", new Date());
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
 
 export const MonthPickerField = ({
   id,
@@ -39,33 +39,33 @@ export const MonthPickerField = ({
   disabled = false,
   "aria-label": ariaLabel,
 }: MonthPickerFieldProps) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [popoverWidth, setPopoverWidth] = useState<number | undefined>()
-  const [open, setOpen] = useState(false)
-  const selectedMonth = toDate(value)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [popoverWidth, setPopoverWidth] = useState<number | undefined>();
+  const [open, setOpen] = useState(false);
+  const selectedMonth = toDate(value);
 
   useEffect(() => {
-    const element = containerRef.current
-    if (!element) return
+    const element = containerRef.current;
+    if (!element) return;
 
     const updateWidth = () => {
-      setPopoverWidth(element.getBoundingClientRect().width)
-    }
+      setPopoverWidth(element.getBoundingClientRect().width);
+    };
 
-    updateWidth()
+    updateWidth();
 
-    const observer = new ResizeObserver(updateWidth)
-    observer.observe(element)
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
 
     return () => {
-      observer.disconnect()
-    }
-  }, [className])
+      observer.disconnect();
+    };
+  }, [className]);
 
   const handleMonthSelect = (date: Date) => {
-    onChange(format(date, "yyyy-MM"))
-    setOpen(false)
-  }
+    onChange(format(date, "yyyy-MM"));
+    setOpen(false);
+  };
 
   return (
     <div ref={containerRef} className={cn("w-full", className)}>
@@ -105,5 +105,5 @@ export const MonthPickerField = ({
         </PopoverContent>
       </Popover>
     </div>
-  )
-}
+  );
+};

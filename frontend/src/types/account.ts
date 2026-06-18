@@ -70,3 +70,18 @@ export type UpsertAccountPayload = {
 }
 
 export type ApiSuccess<T> = ApiEnvelope<T>
+
+export type AccountBalanceSyncResult = {
+  account_id: number
+  opening_balance_minor: number
+  previous_balance_minor: number
+  computed_balance_minor: number
+  adjusted: boolean
+  transaction_count: number
+}
+
+export type AccountBalanceSyncAllResult = {
+  accounts_checked: number
+  accounts_adjusted: number
+  results: AccountBalanceSyncResult[]
+}

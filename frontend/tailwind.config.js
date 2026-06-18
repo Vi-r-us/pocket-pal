@@ -51,6 +51,13 @@ export default {
           border: 'var(--glass-border)',
           highlight: 'var(--glass-highlight)',
         },
+        liquid: {
+          DEFAULT: 'var(--glass-bg)',
+          strong: 'var(--glass-bg-strong)',
+          rim: 'var(--lg-rim)',
+          'rim-soft': 'var(--lg-rim-soft)',
+          fallback: 'var(--lg-fallback)',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -62,9 +69,11 @@ export default {
       },
       backdropBlur: {
         glass: 'var(--glass-blur)',
+        liquid: 'var(--lg-blur)',
       },
       boxShadow: {
         glass: 'var(--glass-shadow)',
+        liquid: 'var(--lg-shadow)',
       },
       backgroundImage: {
         'glass-gradient':

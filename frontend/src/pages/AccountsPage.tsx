@@ -1,4 +1,4 @@
-import { Hash, Landmark, PiggyBank, Wallet } from "lucide-react"
+import { Hash, Landmark, Loader2, PiggyBank, RefreshCw, Wallet } from "lucide-react"
 import { type ColumnDef, type OnChangeFn, type SortingState } from "@tanstack/react-table"
 import { useEffect, useMemo, useState } from "react"
 import { MetricStatCard, type MetricTrend } from "@/components/cards/MetricStatCard"
@@ -6,6 +6,7 @@ import { DataTableBase, DataTablePagination, DataTableToolbar } from "@/componen
 import { GridItem } from "@/components/layout/GridItem"
 import { AccountRowActions, CreateAccountModal, type AccountModalMode } from "@/features/accounts/components"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { APP_HEADER_PRIMARY_ACTION_EVENT, type AppHeaderPrimaryActionDetail } from "@/constants/headerActions"
@@ -13,6 +14,8 @@ import { api } from "@/lib/api"
 import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import { cn } from "@/lib/utils"
 import type {
+  AccountBalanceSyncAllResult,
+  AccountBalanceSyncResult,
   AccountListItem,
   AccountsListData,
   AccountSortBy,
@@ -140,8 +143,10 @@ type AccountTableRow = AccountListItem
 type AccountCardsListProps = {
   rows: AccountTableRow[]
   isLoading: boolean
+  syncingAccountId: number | null
   onEdit: (account: AccountListItem) => void
   onToggleActive: (account: AccountListItem) => void
+  onSyncBalance: (account: AccountListItem) => void
 }
 
 const maskAccountNumber = (last4: string | null | undefined) => {
@@ -173,7 +178,14 @@ const AccountCardsLoading = () => {
   )
 }
 
-const AccountCardsList = ({ rows, isLoading, onEdit, onToggleActive }: AccountCardsListProps) => {
+const AccountCardsList = ({
+  rows,
+  isLoading,
+  syncingAccountId,
+  onEdit,
+  onToggleActive,
+  onSyncBalance,
+}: AccountCardsListProps) => {
   if (isLoading) {
     return <AccountCardsLoading />
   }
@@ -203,8 +215,10 @@ const AccountCardsList = ({ rows, isLoading, onEdit, onToggleActive }: AccountCa
                 </div>
                 <AccountRowActions
                   isActive={account.is_active}
+                  isSyncing={syncingAccountId === account.account_id}
                   onEdit={() => onEdit(account)}
                   onToggleActive={() => onToggleActive(account)}
+                  onSyncBalance={() => onSyncBalance(account)}
                 />
               </div>
 
@@ -284,6 +298,9 @@ export const AccountsPage = () => {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
   const [accountModalMode, setAccountModalMode] = useState<AccountModalMode>("create")
   const [accountUnderEdit, setAccountUnderEdit] = useState<AccountListItem | null>(null)
+  const [syncingAccountId, setSyncingAccountId] = useState<number | null>(null)
+  const [isSyncingAll, setIsSyncingAll] = useState(false)
+  const [syncMessage, setSyncMessage] = useState("")
 
   const sortBy = useMemo(() => mapSortBy(sorting), [sorting])
   const sortOrder = useMemo(() => mapSortOrder(sorting), [sorting])
@@ -467,6 +484,52 @@ export const AccountsPage = () => {
     }
   }
 
+  const formatSyncBalanceMessage = (account: AccountListItem, result: AccountBalanceSyncResult) => {
+    const currencyCode = account.currency_code || "USD"
+    const minorUnit = getSafeMinorUnit(account.currency?.minor_unit)
+    if (!result.adjusted) {
+      return `${account.name}: balance already accurate (${formatMinorAmount(result.computed_balance_minor, currencyCode, minorUnit)})`
+    }
+    return `${account.name}: ${formatMinorAmount(result.previous_balance_minor, currencyCode, minorUnit)} → ${formatMinorAmount(result.computed_balance_minor, currencyCode, minorUnit)}`
+  }
+
+  const handleSyncBalance = async (account: AccountListItem) => {
+    setSyncMessage("")
+    setTableError("")
+    setSyncingAccountId(account.account_id)
+
+    try {
+      const response = await api.post<ApiSuccess<AccountBalanceSyncResult>>(
+        `/accounts/${account.account_id}/sync-balance`,
+      )
+      setSyncMessage(formatSyncBalanceMessage(account, response.data))
+      setRefreshKey((value) => value + 1)
+    } catch (error) {
+      setTableError(getInlineErrorMessage(error, "Could not sync account balance"))
+    } finally {
+      setSyncingAccountId(null)
+    }
+  }
+
+  const handleSyncAllBalances = async () => {
+    setSyncMessage("")
+    setTableError("")
+    setIsSyncingAll(true)
+
+    try {
+      const response = await api.post<ApiSuccess<AccountBalanceSyncAllResult>>("/accounts/sync-balances")
+      const { accounts_checked, accounts_adjusted } = response.data
+      setSyncMessage(
+        `${accounts_checked} account${accounts_checked === 1 ? "" : "s"} checked, ${accounts_adjusted} adjusted`,
+      )
+      setRefreshKey((value) => value + 1)
+    } catch (error) {
+      setTableError(getInlineErrorMessage(error, "Could not sync account balances"))
+    } finally {
+      setIsSyncingAll(false)
+    }
+  }
+
   const accountColumns: ColumnDef<AccountTableRow>[] = [
       {
         accessorKey: "name",
@@ -539,8 +602,10 @@ export const AccountsPage = () => {
           return (
             <AccountRowActions
               isActive={row.original.is_active}
+              isSyncing={syncingAccountId === row.original.account_id || isSyncingAll}
               onEdit={() => handleEditAccount(row.original)}
               onToggleActive={() => handleToggleActive(row.original)}
+              onSyncBalance={() => handleSyncBalance(row.original)}
             />
           )
         },
@@ -636,22 +701,44 @@ export const AccountsPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <DataTableToolbar
-              // leftSlot={
-              //   <ToggleGroup className="gap-2 rounded-lg" type="single" value="all">
-              //     <ToggleGroupItem value="all" aria-label="All accounts" className="!rounded-sm gap-2 bg-muted text-foreground" disabled>
-              //       All Accounts
-              //     </ToggleGroupItem>
-              //   </ToggleGroup>
-              // }
+              rightSlot={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncAllBalances}
+                  disabled={isSyncingAll || syncingAccountId !== null || isTableLoading}
+                >
+                  {isSyncingAll ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="size-4" aria-hidden />
+                      Sync all balances
+                    </>
+                  )}
+                </Button>
+              }
             />
+
+            {syncMessage ? (
+              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-300">
+                {syncMessage}
+              </p>
+            ) : null}
 
             {tableError ? <p className="text-sm text-destructive">{tableError}</p> : null}
 
             <AccountCardsList
               rows={tableRows}
               isLoading={isTableLoading}
+              syncingAccountId={syncingAccountId}
               onEdit={handleEditAccount}
               onToggleActive={handleToggleActive}
+              onSyncBalance={handleSyncBalance}
             />
 
             <div className="hidden lg:block">

@@ -5,6 +5,8 @@ import {
   createAccount as createAccountService,
   updateAccount as updateAccountService,
   deleteAccount as deleteAccountService,
+  reconcileAccountBalance as reconcileAccountBalanceService,
+  reconcileAllAccountBalances as reconcileAllAccountBalancesService,
 } from "../services/account.service.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -110,4 +112,39 @@ const deleteAccount = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, null, "Account deleted successfully"));
 });
 
-export { getAccounts, getAccount, createAccount, updateAccount, deleteAccount };
+/**
+ * POST /accounts/sync-balances
+ * Reconcile balance_minor for all user accounts from opening balance + transactions.
+ */
+const syncAllAccountBalances = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+  const result = await reconcileAllAccountBalancesService(userId);
+  return res.status(200).json(new ApiResponse(200, result, "Account balances synced successfully"));
+});
+
+/**
+ * POST /accounts/:id/sync-balance
+ * Reconcile balance_minor for one account from opening balance + transactions.
+ */
+const syncAccountBalance = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+
+  const { error, value } = validateAccountIdQuery({ id: req.params.id });
+  if (error) {
+    const errorMessages = error.details.map((d) => d.message).join(", ");
+    throw new ApiError(400, `Validation error: ${errorMessages}`);
+  }
+
+  const result = await reconcileAccountBalanceService(userId, value.id);
+  return res.status(200).json(new ApiResponse(200, result, "Account balance synced successfully"));
+});
+
+export {
+  getAccounts,
+  getAccount,
+  createAccount,
+  updateAccount,
+  deleteAccount,
+  syncAllAccountBalances,
+  syncAccountBalance,
+};
