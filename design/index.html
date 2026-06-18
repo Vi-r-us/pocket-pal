@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PocketPal — Design Language</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+<style>
+  /* ============================================================
+     PocketPal design tokens.
+     Source of truth: frontend/src/index.css (oklch + glass).
+     The :root / .dark blocks below MIRROR that file. Tokens marked
+     "TO ADOPT" are proposed in frontend/DESIGN_LANGUAGE.md and are
+     not yet in index.css — shown here to demonstrate the target.
+     ============================================================ */
+  :root {
+    /* page */
+    --background: oklch(0.96 0.01 90);
+    --foreground: oklch(0.23 0.03 159.93);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.23 0.03 159.93);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.23 0.03 159.93);
+    --primary: oklch(0.31 0.04 158.16);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.97 0.01 153.41);
+    --secondary-foreground: oklch(0.31 0.04 158.16);
+    --muted: oklch(0.97 0.01 153.41);
+    --muted-foreground: oklch(0.62 0.02 102.58);
+    --accent: oklch(0.78 0.12 156.2);
+    --accent-foreground: oklch(0.23 0.03 159.93);
+    --destructive: oklch(0.68 0.12 20.83);
+    --border: oklch(0.91 0.02 162.6);
+    --input: oklch(0.91 0.02 162.6);
+    --ring: oklch(0.53 0.09 155.65);
+
+    --chart-1: oklch(0.78 0.12 156.2);
+    --chart-2: oklch(0.31 0.04 158.16);
+    --chart-3: oklch(0.79 0.16 73.74);
+    --chart-4: oklch(0.68 0.12 20.83);
+    --chart-5: oklch(0.53 0.09 155.65);
+
+    --radius: 1.25rem;
+
+    --shadow-sm: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 1px 2px -1px oklch(0 0 0 / 0.1);
+    --shadow-md: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 2px 4px -1px oklch(0 0 0 / 0.1);
+    --shadow-lg: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 4px 6px -1px oklch(0 0 0 / 0.1);
+
+    /* glass */
+    --glass-bg: oklch(1 0 0 / 0.6);
+    --glass-bg-strong: oklch(1 0 0 / 0.78);
+    --glass-border: oklch(0 0 0 / 0.06);
+    --glass-highlight: oklch(1 0 0 / 0.6);
+    --glass-shadow: 0 8px 32px 0 oklch(0.3 0.04 158 / 0.08);
+    --glass-blur: 20px;
+
+    --bg-tint-1: oklch(0.92 0.05 156 / 0.55);
+    --bg-tint-2: oklch(0.96 0.01 90 / 0);
+
+    /* ---- TO ADOPT: finance-semantic colors ---- */
+    --trend-positive: oklch(0.65 0.16 152);
+    --trend-negative: oklch(0.62 0.2 18);
+    --type-income: oklch(0.65 0.16 152);
+    --type-expense: oklch(0.62 0.2 18);
+    --type-savings: oklch(0.58 0.14 245);
+    --status-active: oklch(0.65 0.16 152);
+    --status-inactive: var(--muted-foreground);
+
+    /* ---- TO ADOPT: motion tokens ---- */
+    --motion-fast: 120ms;
+    --motion-standard: 220ms;
+    --motion-slow: 400ms;
+    --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ---- TO ADOPT: Liquid Glass material ---- */
+    --lg-tint-top: oklch(1 0 0 / 0.22);
+    --lg-tint-bottom: oklch(1 0 0 / 0.04);
+    --lg-blur: 18px;
+    --lg-saturate: 180%;
+    --lg-brightness: 1.06;
+    --lg-rim: oklch(1 0 0 / 0.65);
+    --lg-rim-soft: oklch(1 0 0 / 0.18);
+    --lg-shadow: 0 8px 32px 0 oklch(0.3 0.04 158 / 0.16);
+    --lg-fallback: oklch(0.99 0.01 120 / 0.92);
+  }
+
+  .dark {
+    --background: oklch(0.19 0.03 160);
+    --foreground: oklch(0.96 0 156.67);
+    --card: oklch(0.26 0.03 159.84);
+    --card-foreground: oklch(0.96 0 156.67);
+    --popover: oklch(0.26 0.03 159.84);
+    --popover-foreground: oklch(0.96 0 156.67);
+    --primary: oklch(0.78 0.12 156.2);
+    --primary-foreground: oklch(0.21 0.03 159.7);
+    --secondary: oklch(0.33 0.04 159.47);
+    --secondary-foreground: oklch(0.93 0.01 159.76);
+    --muted: oklch(0.29 0.03 160.45);
+    --muted-foreground: oklch(0.66 0.04 160.03);
+    --accent: oklch(0.53 0.09 155.65);
+    --accent-foreground: oklch(1 0 0);
+    --destructive: oklch(0.59 0.17 23.7);
+    --border: oklch(0.37 0.04 159.88);
+    --input: oklch(0.37 0.04 159.88);
+    --ring: oklch(0.78 0.12 156.2);
+
+    --chart-1: oklch(0.78 0.12 156.2);
+    --chart-2: oklch(0.53 0.09 155.65);
+    --chart-3: oklch(0.79 0.16 73.74);
+    --chart-4: oklch(0.61 0.16 22.79);
+    --chart-5: oklch(0.81 0.02 158.93);
+
+    --shadow-sm: 0 1px 3px 0px oklch(0 0 0 / 0.2), 0 1px 2px -1px oklch(0 0 0 / 0.2);
+    --shadow-md: 0 1px 3px 0px oklch(0 0 0 / 0.2), 0 2px 4px -1px oklch(0 0 0 / 0.2);
+    --shadow-lg: 0 1px 3px 0px oklch(0 0 0 / 0.25), 0 4px 6px -1px oklch(0 0 0 / 0.25);
+
+    --glass-bg: oklch(1 0 0 / 0.05);
+    --glass-bg-strong: oklch(1 0 0 / 0.09);
+    --glass-border: oklch(1 0 0 / 0.08);
+    --glass-highlight: oklch(1 0 0 / 0.12);
+    --glass-shadow: 0 8px 32px 0 oklch(0 0 0 / 0.35);
+    --glass-blur: 24px;
+
+    --bg-tint-1: oklch(0.55 0.14 156 / 0.22);
+    --bg-tint-2: oklch(0.19 0.03 160 / 0);
+
+    --trend-positive: oklch(0.8 0.14 152);
+    --trend-negative: oklch(0.7 0.18 20);
+    --type-income: oklch(0.8 0.14 152);
+    --type-expense: oklch(0.7 0.18 20);
+    --type-savings: oklch(0.72 0.12 245);
+    --status-active: oklch(0.8 0.14 152);
+
+    --lg-tint-top: oklch(1 0 0 / 0.1);
+    --lg-tint-bottom: oklch(1 0 0 / 0.02);
+    --lg-blur: 22px;
+    --lg-saturate: 160%;
+    --lg-brightness: 1.12;
+    --lg-rim: oklch(1 0 0 / 0.3);
+    --lg-rim-soft: oklch(1 0 0 / 0.08);
+    --lg-shadow: 0 8px 32px 0 oklch(0 0 0 / 0.45);
+    --lg-fallback: oklch(0.24 0.03 160 / 0.92);
+  }
+
+  /* ---------- base ---------- */
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+
+  body {
+    margin: 0;
+    font-family: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    line-height: 1.55;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, var(--bg-tint-1), var(--bg-tint-2)),
+      radial-gradient(900px 500px at 100% 100%, var(--bg-tint-1), var(--bg-tint-2));
+    background-attachment: fixed;
+  }
+
+  .num { font-variant-numeric: tabular-nums; }
+  .mono-note { font-size: 0.75rem; color: var(--muted-foreground); }
+
+  code {
+    font-family: ui-monospace, "SF Mono", "Fira Code", monospace;
+    background: var(--muted);
+    color: var(--foreground);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 0.82em;
+  }
+
+  a { color: var(--primary); }
+  .dark a { color: var(--accent); }
+
+  /* ---------- layout ---------- */
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+  header.top {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background-color: color-mix(in oklab, var(--background) 82%, transparent);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+  }
+  .top-inner {
+    max-width: 1080px; margin: 0 auto; padding: 12px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .brand .dot {
+    width: 26px; height: 26px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--primary));
+  }
+  .top nav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+  .top nav a {
+    font-size: 0.82rem; text-decoration: none; color: var(--muted-foreground);
+    padding: 6px 10px; border-radius: 999px;
+    transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+  }
+  .top nav a:hover { background: var(--muted); color: var(--foreground); }
+
+  .toggles { display: flex; gap: 8px; }
+
+  .hero { padding: 56px 0 24px; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.02em; }
+  .hero p { font-size: 1.05rem; color: var(--muted-foreground); max-width: 64ch; margin: 0; }
+  .eyebrow {
+    display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 14px;
+  }
+
+  section.block { padding: 40px 0; border-top: 1px solid var(--border); }
+  section.block:first-of-type { border-top: none; }
+  .sec-head { margin-bottom: 22px; }
+  .sec-num { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  h2 { font-size: 1.6rem; margin: 4px 0 6px; letter-spacing: -0.01em; }
+  h3 { font-size: 1.05rem; margin: 26px 0 12px; }
+  .lede { color: var(--muted-foreground); max-width: 70ch; margin: 0; }
+
+  .grid { display: grid; gap: 16px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px) { .g3, .g4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+
+  /* ---------- surfaces ---------- */
+  .card {
+    background: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .glass {
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: inset 0 1px 0 0 var(--glass-highlight), var(--glass-shadow);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  }
+
+  /* ---------- Liquid Glass ---------- */
+  .liquid-glass, .liquid-glass-refract {
+    position: relative; isolation: isolate;
+    border-radius: 18px; padding: 18px;
+    border: 1px solid transparent;
+    background-image: linear-gradient(135deg, var(--lg-tint-top) 0%, var(--lg-tint-bottom) 55%, var(--lg-tint-top) 100%);
+    background-color: var(--glass-bg);
+    box-shadow: inset 0 1px 1px 0 var(--lg-rim), inset 0 -1px 1px 0 var(--lg-rim-soft), var(--lg-shadow);
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+  }
+  .liquid-glass::after, .liquid-glass-refract::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px;
+    background: linear-gradient(135deg, var(--lg-rim) 0%, transparent 38%, transparent 62%, var(--lg-rim-soft) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+    pointer-events: none;
+  }
+  @supports ((backdrop-filter: url(#x)) or (-webkit-backdrop-filter: url(#x))) {
+    .liquid-glass-refract {
+      backdrop-filter: url(#liquid-refraction) blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+      -webkit-backdrop-filter: url(#liquid-refraction) blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+    }
+  }
+  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    .liquid-glass, .liquid-glass-refract {
+      background-image: none; background-color: var(--lg-fallback);
+      backdrop-filter: none; -webkit-backdrop-filter: none; border-color: var(--border);
+    }
+    .liquid-glass::after, .liquid-glass-refract::after { display: none; }
+  }
+
+  /* busy backdrop so refraction + specular rim are visible */
+  .lg-stage {
+    position: relative; border-radius: 18px; padding: 22px;
+    background-image:
+      radial-gradient(circle at 18% 28%, oklch(0.75 0.18 32) 0, transparent 32%),
+      radial-gradient(circle at 78% 22%, oklch(0.7 0.16 250) 0, transparent 34%),
+      radial-gradient(circle at 62% 82%, oklch(0.78 0.18 150) 0, transparent 36%),
+      radial-gradient(circle at 30% 78%, oklch(0.74 0.2 320) 0, transparent 34%),
+      linear-gradient(135deg, oklch(0.8 0.12 90), oklch(0.6 0.14 200));
+    background-repeat: no-repeat;
+  }
+  .lg-stage .stripes {
+    position: absolute; inset: 0; border-radius: inherit; opacity: 0.35; pointer-events: none;
+    background-image: repeating-linear-gradient(45deg, oklch(1 0 0 / 0.5) 0 2px, transparent 2px 16px);
+  }
+  .lg-grid { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .lg-grid { grid-template-columns: 1fr; } }
+  .lg-card-title { font-weight: 600; margin: 0 0 4px; color: oklch(0.18 0.02 160); }
+  .dark .lg-card-title { color: var(--foreground); }
+  .lg-card-note { font-size: 0.74rem; margin: 0; color: oklch(0.3 0.02 160); }
+  .dark .lg-card-note { color: var(--muted-foreground); }
+  .tier-badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); }
+  .muted-box { background: color-mix(in oklab, var(--muted) 60%, transparent); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .label { font-size: 0.8rem; font-weight: 500; color: var(--muted-foreground); }
+  .tag { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted-foreground); }
+  .tag.adopt { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, transparent); }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: inherit; font-size: 0.85rem; font-weight: 500;
+    border-radius: 12px; border: 1px solid transparent; padding: 8px 14px;
+    cursor: pointer; user-select: none;
+    transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn-primary:hover { background: color-mix(in oklab, var(--primary) 85%, black); }
+  .dark .btn-primary:hover { background: color-mix(in oklab, var(--primary) 85%, white); }
+  .btn-outline { border-color: var(--border); background: var(--card); color: var(--foreground); }
+  .btn-outline:hover { background: var(--muted); }
+  .btn-secondary { background: var(--secondary); color: var(--secondary-foreground); }
+  .btn-ghost { background: transparent; color: var(--foreground); }
+  .btn-ghost:hover { background: var(--muted); }
+  .btn-destructive { background: color-mix(in oklab, var(--destructive) 14%, transparent); color: var(--destructive); }
+  .btn-destructive:hover { background: color-mix(in oklab, var(--destructive) 24%, transparent); }
+  .btn[disabled] { opacity: 0.5; pointer-events: none; }
+  .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 10px; }
+
+  /* ---------- swatches ---------- */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .swatch { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); }
+  .swatch .chip { height: 56px; }
+  .swatch .meta { padding: 8px 10px; }
+  .swatch .name { font-size: 0.8rem; font-weight: 500; }
+  .swatch .use { font-size: 0.7rem; color: var(--muted-foreground); }
+
+  /* ---------- type scale ---------- */
+  .type-row { display: flex; align-items: baseline; gap: 16px; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+  .type-row .meta { width: 130px; flex-shrink: 0; font-size: 0.72rem; color: var(--muted-foreground); }
+
+  table.money { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  table.money th, table.money td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  table.money th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); font-weight: 600; }
+  table.money td.amt { text-align: right; }
+  table.money tbody tr { transition: background-color var(--motion-fast) var(--ease-standard); }
+  table.money tbody tr:hover { background: color-mix(in oklab, var(--muted) 55%, transparent); }
+
+  /* spacing bars */
+  .space-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .space-bar { height: 16px; background: var(--accent); border-radius: 4px; }
+  .radius-chips { display: flex; gap: 12px; flex-wrap: wrap; }
+  .radius-chip { width: 84px; height: 64px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: center; padding: 6px; font-size: 0.68rem; color: var(--muted-foreground); }
+
+  /* icons */
+  .icon { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-tile { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; }
+
+  /* KPI */
+  .kpi { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .kpi .v { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.02em; }
+  .kpi .t { font-size: 0.82rem; color: var(--muted-foreground); }
+  .pill { display: inline-flex; align-items: center; gap: 3px; font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .pill.up { color: var(--trend-positive); background: color-mix(in oklab, var(--trend-positive) 16%, transparent); }
+  .pill.down { color: var(--trend-negative); background: color-mix(in oklab, var(--trend-negative) 16%, transparent); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.74rem; font-weight: 500; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); }
+  .badge.income { color: var(--type-income); background: color-mix(in oklab, var(--type-income) 12%, transparent); border-color: color-mix(in oklab, var(--type-income) 30%, transparent); }
+  .badge.expense { color: var(--type-expense); background: color-mix(in oklab, var(--type-expense) 12%, transparent); border-color: color-mix(in oklab, var(--type-expense) 30%, transparent); }
+  .badge.savings { color: var(--type-savings); background: color-mix(in oklab, var(--type-savings) 12%, transparent); border-color: color-mix(in oklab, var(--type-savings) 30%, transparent); }
+  .badge.active { color: var(--status-active); background: color-mix(in oklab, var(--status-active) 12%, transparent); border-color: color-mix(in oklab, var(--status-active) 30%, transparent); }
+
+  /* inputs */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 0.82rem; font-weight: 500; }
+  .input { font-family: inherit; font-size: 0.88rem; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--input); background: var(--card); color: var(--foreground); }
+  .input:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent); }
+  .input.invalid { border-color: var(--destructive); }
+  .err { font-size: 0.76rem; color: var(--destructive); }
+
+  .check { display: inline-flex; align-items: center; gap: 9px; font-size: 0.85rem; cursor: pointer; }
+  .check input { position: absolute; opacity: 0; pointer-events: none; }
+  .check .box { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid var(--input); display: inline-flex; align-items: center; justify-content: center; transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+  .check .box svg { opacity: 0; transform: scale(0.6); transition: opacity var(--motion-fast) var(--ease-enter), transform var(--motion-fast) var(--ease-enter); }
+  .check input:checked + .box { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+  .check input:checked + .box svg { opacity: 1; transform: scale(1); }
+  .check input:focus-visible + .box { box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent); }
+
+  .switch { width: 40px; height: 22px; border-radius: 999px; background: var(--muted); border: 1px solid var(--border); position: relative; cursor: pointer; transition: background-color var(--motion-standard) var(--ease-standard); }
+  .switch .knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--card); box-shadow: var(--shadow-sm); transition: transform var(--motion-standard) var(--ease-standard); }
+  .switch[aria-checked="true"] { background: var(--primary); }
+  .switch[aria-checked="true"] .knob { transform: translateX(18px); }
+
+  /* ---------- motion demos ---------- */
+  .demo { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: var(--card); }
+  .demo h4 { margin: 0 0 4px; font-size: 0.92rem; }
+  .demo p { margin: 0 0 12px; font-size: 0.76rem; color: var(--muted-foreground); }
+  .track { height: 46px; border-radius: 10px; background: color-mix(in oklab, var(--muted) 55%, transparent); position: relative; overflow: hidden; margin-bottom: 8px; }
+  .mover { position: absolute; top: 7px; left: 7px; width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--primary)); }
+  .run .mover { animation-name: slide; animation-duration: var(--d, 220ms); animation-timing-function: var(--e, var(--ease-standard)); animation-fill-mode: forwards; }
+  @keyframes slide { from { left: 7px; } to { left: calc(100% - 39px); } }
+
+  .skel { height: 14px; border-radius: 6px; background: linear-gradient(90deg, color-mix(in oklab, var(--muted) 70%, transparent) 25%, color-mix(in oklab, var(--muted) 40%, transparent) 37%, color-mix(in oklab, var(--muted) 70%, transparent) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; margin-bottom: 8px; }
+  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+  .reveal { transform: translateY(8px); opacity: 0; }
+  .reveal.show { transform: translateY(0); opacity: 1; transition: transform var(--motion-standard) var(--ease-enter), opacity var(--motion-standard) var(--ease-enter); }
+
+  .stagger li { transform: translateY(10px); opacity: 0; list-style: none; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px; background: var(--card); font-size: 0.84rem; }
+  .stagger.go li { animation: rise var(--motion-standard) var(--ease-enter) forwards; }
+  .stagger.go li:nth-child(1) { animation-delay: 0ms; }
+  .stagger.go li:nth-child(2) { animation-delay: 60ms; }
+  .stagger.go li:nth-child(3) { animation-delay: 120ms; }
+  .stagger.go li:nth-child(4) { animation-delay: 180ms; }
+  @keyframes rise { to { transform: translateY(0); opacity: 1; } }
+
+  ul.stagger { padding: 0; margin: 0; }
+
+  /* modal */
+  .overlay { position: fixed; inset: 0; background: oklch(0 0 0 / 0.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; opacity: 0; pointer-events: none; transition: opacity var(--motion-slow) var(--ease-standard); }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+  .modal { background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 18px; padding: 22px; max-width: 380px; width: 100%; box-shadow: var(--shadow-lg); transform: translateY(8px) scale(0.97); opacity: 0; transition: transform var(--motion-slow) var(--ease-enter), opacity var(--motion-slow) var(--ease-enter); }
+  .overlay.open .modal { transform: translateY(0) scale(1); opacity: 1; }
+
+  /* sheet */
+  .sheet-stage { position: relative; height: 150px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: color-mix(in oklab, var(--muted) 45%, transparent); }
+  .sheet { position: absolute; top: 0; right: 0; bottom: 0; width: 62%; background: var(--popover); border-left: 1px solid var(--border); padding: 14px; transform: translateX(100%); transition: transform var(--motion-slow) var(--ease-enter); box-shadow: var(--shadow-lg); }
+  .sheet-stage.open .sheet { transform: translateX(0); }
+
+  /* toast */
+  .toast-stage { position: relative; height: 92px; border: 1px dashed var(--border); border-radius: 12px; }
+  .toast { position: absolute; right: 12px; bottom: 12px; background: var(--popover); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 0.82rem; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 8px; transform: translateY(16px); opacity: 0; transition: transform var(--motion-standard) var(--ease-enter), opacity var(--motion-standard) var(--ease-enter); }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  .easing-curve { display: flex; gap: 10px; align-items: center; }
+
+  /* do / dont */
+  .dd { border-radius: 14px; padding: 16px; border: 1px solid var(--border); }
+  .dd .hd { font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .dd.good { border-color: color-mix(in oklab, var(--trend-positive) 45%, var(--border)); }
+  .dd.bad { border-color: color-mix(in oklab, var(--trend-negative) 45%, var(--border)); }
+  .dd.good .hd { color: var(--trend-positive); }
+  .dd.bad .hd { color: var(--trend-negative); }
+
+  .empty-state { text-align: center; padding: 26px 16px; }
+  .empty-state .ring { width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; background: color-mix(in oklab, var(--accent) 16%, transparent); color: var(--accent); }
+
+  .callout { border-left: 3px solid var(--accent); background: color-mix(in oklab, var(--accent) 8%, transparent); padding: 12px 14px; border-radius: 0 10px 10px 0; font-size: 0.85rem; }
+
+  footer.foot { border-top: 1px solid var(--border); padding: 32px 0 60px; color: var(--muted-foreground); font-size: 0.85rem; }
+  footer.foot a { font-weight: 500; }
+  .ref-list { columns: 2; gap: 24px; }
+  @media (max-width: 560px) { .ref-list { columns: 1; } }
+
+  /* reduced motion: OS setting OR the in-page toggle (.force-reduce) */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  }
+  .force-reduce *, .force-reduce *::before, .force-reduce *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+</style>
+</head>
+<body>
+  <!-- Tier 2 refraction filter. In the real app this is mounted once at the app root. -->
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <filter id="liquid-refraction" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
+      <feGaussianBlur in="noise" stdDeviation="1.2" result="softNoise" />
+      <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="26" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand"><span class="dot"></span> PocketPal · Design Language</div>
+      <nav>
+        <a href="#principles">Principles</a>
+        <a href="#color">Color</a>
+        <a href="#type">Type</a>
+        <a href="#surfaces">Surfaces</a>
+        <a href="#liquid">Liquid Glass</a>
+        <a href="#motion">Motion</a>
+        <a href="#components">Components</a>
+        <a href="#data">Data</a>
+        <a href="#dodont">Do / Don't</a>
+      </nav>
+      <div class="toggles">
+        <button class="btn btn-outline btn-sm" id="themeBtn" type="button" aria-pressed="false">Dark</button>
+        <button class="btn btn-outline btn-sm" id="motionBtn" type="button" aria-pressed="false" title="Force prefers-reduced-motion for the whole page">Reduce motion</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="hero">
+      <span class="eyebrow">Single source of truth</span>
+      <h1>The PocketPal design language</h1>
+      <p>A living showcase of the tokens, surfaces, typography, and motion every PocketPal screen follows — built to feel modern, consistent, and trustworthy. Mirrors the real tokens in <code>frontend/src/index.css</code>. Tags marked <span class="tag adopt">to adopt</span> are proposed in the spec and not yet in code.</p>
+    </div>
+  </div>
+
+  <main class="wrap">
+
+    <!-- 1. PRINCIPLES -->
+    <section class="block" id="principles">
+      <div class="sec-head">
+        <span class="sec-num">01 — Foundations</span>
+        <h2>Principles</h2>
+        <p class="lede">Five rules that resolve every judgment call. When in doubt, optimize for clarity and consistency.</p>
+      </div>
+      <div class="grid g3">
+        <div class="card"><h3 style="margin-top:0">Clarity over decoration</h3><p class="label">One clear hero metric per screen. Supporting detail recedes in size and muted color. Visuals serve the data.</p></div>
+        <div class="card"><h3 style="margin-top:0">Trust through consistency</h3><p class="label">The same action looks and behaves the same everywhere. Predictability lowers cognitive load.</p></div>
+        <div class="card"><h3 style="margin-top:0">Accessibility is a foundation</h3><p class="label">WCAG AA contrast, full keyboard support, visible focus, and reduced-motion are built in, not bolted on.</p></div>
+        <div class="card"><h3 style="margin-top:0">Motion is functional</h3><p class="label">Every animation gives feedback, guides attention, shows a state change, or maps space. No purpose, no motion.</p></div>
+        <div class="card"><h3 style="margin-top:0">One product, one language</h3><p class="label">Auth, shell, dashboards, tables, and settings share the same tokens, surfaces, and motion.</p></div>
+      </div>
+    </section>
+
+    <!-- 2. COLOR -->
+    <section class="block" id="color">
+      <div class="sec-head">
+        <span class="sec-num">02 — Foundations</span>
+        <h2>Color</h2>
+        <p class="lede">Always use semantic tokens, never raw hex/oklch in components. Toggle the theme in the header to verify both modes. Red is reserved for errors and destructive actions only.</p>
+      </div>
+
+      <h3>Core semantic tokens</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--background)"></div><div class="meta"><div class="name">background</div><div class="use">Page base</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--foreground)"></div><div class="meta"><div class="name">foreground</div><div class="use">Default text</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--primary)"></div><div class="meta"><div class="name">primary</div><div class="use">Primary actions</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--accent)"></div><div class="meta"><div class="name">accent</div><div class="use">Highlights, active nav</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--secondary)"></div><div class="meta"><div class="name">secondary</div><div class="use">Quiet fills</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--muted)"></div><div class="meta"><div class="name">muted</div><div class="use">Subtle zones</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--card)"></div><div class="meta"><div class="name">card</div><div class="use">Opaque surfaces</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--destructive)"></div><div class="meta"><div class="name">destructive</div><div class="use">Errors only</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--border)"></div><div class="meta"><div class="name">border</div><div class="use">Hairlines, inputs</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--ring)"></div><div class="meta"><div class="name">ring</div><div class="use">Focus ring</div></div></div>
+      </div>
+
+      <h3>Chart series palette</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--chart-1)"></div><div class="meta"><div class="name">chart-1</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--chart-2)"></div><div class="meta"><div class="name">chart-2</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--chart-3)"></div><div class="meta"><div class="name">chart-3</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--chart-4)"></div><div class="meta"><div class="name">chart-4</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--chart-5)"></div><div class="meta"><div class="name">chart-5</div></div></div>
+      </div>
+
+      <h3>Finance-semantic intent tokens <span class="tag adopt">to adopt</span></h3>
+      <p class="lede" style="margin-bottom:14px">Standardizes the scattered hardcoded emerald / rose / blue usage. Color by intent, not by habit.</p>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--trend-positive)"></div><div class="meta"><div class="name">trend-positive</div><div class="use">Gains, up</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--trend-negative)"></div><div class="meta"><div class="name">trend-negative</div><div class="use">Losses, down</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--type-income)"></div><div class="meta"><div class="name">type-income</div><div class="use">Income</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--type-expense)"></div><div class="meta"><div class="name">type-expense</div><div class="use">Expense</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--type-savings)"></div><div class="meta"><div class="name">type-savings</div><div class="use">Savings / transfer</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--status-active)"></div><div class="meta"><div class="name">status-active</div><div class="use">Active / on</div></div></div>
+      </div>
+    </section>
+
+    <!-- 3. TYPOGRAPHY -->
+    <section class="block" id="type">
+      <div class="sec-head">
+        <span class="sec-num">03 — Foundations</span>
+        <h2>Typography</h2>
+        <p class="lede">DM Sans on a 1.25 (major-third) scale. Weights 400 / 500 / 600. Money and counts always use <code>tabular-nums</code>.</p>
+      </div>
+
+      <div class="card">
+        <div class="type-row"><div class="meta">Display · 48px</div><div style="font-size:3rem;font-weight:600;letter-spacing:-0.02em;line-height:1.1">$56,200</div></div>
+        <div class="type-row"><div class="meta">H1 · 36px</div><div style="font-size:2.25rem;font-weight:600;letter-spacing:-0.02em">Page title</div></div>
+        <div class="type-row"><div class="meta">H2 · 24px</div><div style="font-size:1.5rem;font-weight:600">Section heading</div></div>
+        <div class="type-row"><div class="meta">H3 · 18px</div><div style="font-size:1.125rem;font-weight:600">Card title</div></div>
+        <div class="type-row"><div class="meta">Body · 16px</div><div style="font-size:1rem">Default body text for reading.</div></div>
+        <div class="type-row"><div class="meta">Body-sm · 14px</div><div style="font-size:0.875rem">Dense UI and table cells.</div></div>
+        <div class="type-row" style="border-bottom:none"><div class="meta">Caption · 12px</div><div style="font-size:0.75rem;color:var(--muted-foreground)">Metadata, footers, hints.</div></div>
+      </div>
+
+      <h3>Why <code>tabular-nums</code> is mandatory</h3>
+      <div class="grid g2">
+        <div class="card">
+          <div class="label" style="margin-bottom:8px">Proportional digits — misaligned <span class="tag" style="color:var(--trend-negative);border-color:color-mix(in oklab,var(--trend-negative) 40%,transparent)">avoid</span></div>
+          <table class="money"><tbody>
+            <tr><td>Groceries</td><td class="amt">$1,141.00</td></tr>
+            <tr><td>Rent</td><td class="amt">$11,800.00</td></tr>
+            <tr><td>Coffee</td><td class="amt">$9.99</td></tr>
+          </tbody></table>
+        </div>
+        <div class="card">
+          <div class="label" style="margin-bottom:8px">Tabular digits — aligned <span class="tag" style="color:var(--trend-positive);border-color:color-mix(in oklab,var(--trend-positive) 40%,transparent)">use</span></div>
+          <table class="money"><tbody>
+            <tr><td>Groceries</td><td class="amt num">$1,141.00</td></tr>
+            <tr><td>Rent</td><td class="amt num">$11,800.00</td></tr>
+            <tr><td>Coffee</td><td class="amt num">$9.99</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SPACING + RADIUS -->
+    <section class="block" id="spacing">
+      <div class="sec-head">
+        <span class="sec-num">04 — Foundations</span>
+        <h2>Spacing &amp; radius</h2>
+        <p class="lede">4px base grid, 8px rhythm. Use the scale steps; avoid arbitrary one-off pixel values.</p>
+      </div>
+      <div class="grid g2">
+        <div class="card">
+          <div class="label" style="margin-bottom:12px">Spacing scale (gap / padding)</div>
+          <div class="space-row"><span class="mono-note" style="width:46px">2 · 8px</span><span class="space-bar" style="width:8px"></span></div>
+          <div class="space-row"><span class="mono-note" style="width:46px">3 · 12px</span><span class="space-bar" style="width:12px"></span></div>
+          <div class="space-row"><span class="mono-note" style="width:46px">4 · 16px</span><span class="space-bar" style="width:16px"></span></div>
+          <div class="space-row"><span class="mono-note" style="width:46px">6 · 24px</span><span class="space-bar" style="width:24px"></span></div>
+          <div class="space-row"><span class="mono-note" style="width:46px">8 · 32px</span><span class="space-bar" style="width:32px"></span></div>
+          <div class="space-row"><span class="mono-note" style="width:46px">12 · 48px</span><span class="space-bar" style="width:48px"></span></div>
+        </div>
+        <div class="card">
+          <div class="label" style="margin-bottom:12px">Radius scale (from <code>--radius: 1.25rem</code>)</div>
+          <div class="radius-chips">
+            <div class="radius-chip" style="border-radius:8px">sm</div>
+            <div class="radius-chip" style="border-radius:12px">md</div>
+            <div class="radius-chip" style="border-radius:20px">lg</div>
+            <div class="radius-chip" style="border-radius:999px">full</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. SURFACES -->
+    <section class="block" id="surfaces">
+      <div class="sec-head">
+        <span class="sec-num">05 — Foundations</span>
+        <h2>Surfaces: glass vs. flat</h2>
+        <p class="lede">Decide a surface's material by its <strong>density</strong>, not by the screen. This rule keeps auth and the app one product.</p>
+      </div>
+      <div class="grid g2">
+        <div class="glass">
+          <div class="label" style="margin-bottom:8px">Glass</div>
+          <p style="margin:0 0 6px;font-weight:500">Shell · header · nav · KPI cards · modals · auth hero</p>
+          <p class="mono-note" style="margin:0">Translucent over the radial backdrop. Never stack blur on tiny elements like icon tiles.</p>
+        </div>
+        <div class="card">
+          <div class="label" style="margin-bottom:8px">Flat (opaque card)</div>
+          <p style="margin:0 0 6px;font-weight:500">Tables · forms · settings panels</p>
+          <p class="mono-note" style="margin:0">Dense, text-heavy surfaces stay opaque for maximum legibility over a busy background.</p>
+        </div>
+      </div>
+      <h3>Iconography</h3>
+      <div class="card" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" class="icon"><path d="M3 12h18M12 3v18"/></svg> <span class="mono-note">size-4 · inline / buttons</span></span>
+        <span style="display:inline-flex;align-items:center;gap:8px"><svg width="20" height="20" viewBox="0 0 24 24" class="icon"><path d="M3 12h18M12 3v18"/></svg> <span class="mono-note">size-5 · nav / standalone</span></span>
+        <span class="icon-tile" style="background:color-mix(in oklab,var(--type-income) 16%,transparent);color:var(--type-income)"><svg width="20" height="20" viewBox="0 0 24 24" class="icon"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span>
+        <span class="mono-note">lucide only · decorative icons get <code>aria-hidden</code> · icon-only controls get <code>aria-label</code> + tooltip</span>
+      </div>
+    </section>
+
+    <!-- 5b. LIQUID GLASS -->
+    <section class="block" id="liquid">
+      <div class="sec-head">
+        <span class="sec-num">05b — Foundations</span>
+        <h2>Liquid Glass <span class="tag adopt">to adopt</span></h2>
+        <p class="lede">An Apple-style evolution of the frosted glass: layered translucency, a light-aware specular rim, and real edge refraction where the browser supports it. Compare the three materials below over a busy backdrop, and switch the theme in the header. Reserve it for chrome / KPI / modal surfaces — never behind dense data.</p>
+      </div>
+
+      <p class="mono-note" style="margin-bottom:12px">Your browser renders Tier 2 refraction: <span class="tier-badge" id="tierBadge">checking…</span></p>
+
+      <div class="lg-stage">
+        <div class="stripes" aria-hidden="true"></div>
+        <div class="lg-grid">
+          <div class="glass">
+            <p class="lg-card-title">Current frosted <code>.glass</code></p>
+            <p class="lg-card-note">Blur + tint + single top highlight. The baseline shipping material.</p>
+          </div>
+          <div class="liquid-glass">
+            <p class="lg-card-title">Tier 1 <code>.liquid-glass</code></p>
+            <p class="lg-card-note">Layered fill, brightness lift, depth highlights, and a masked specular rim. Works in every browser.</p>
+          </div>
+          <div class="liquid-glass-refract">
+            <p class="lg-card-title">Tier 2 <code>.liquid-glass-refract</code></p>
+            <p class="lg-card-note">Adds SVG displacement so edges visibly refract the backdrop (Chromium). Falls back to Tier 1 elsewhere.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:18px">
+        <strong>Guardrails:</strong> keep tables, forms, and dense numbers on opaque <code>card</code> — Liquid Glass never sits behind body text or data. Accessibility fallbacks are built in: under <code>prefers-reduced-transparency</code> or <code>prefers-contrast: more</code> the material drops to a near-opaque surface; under <code>prefers-reduced-motion</code> no fluid motion plays. Tier 2 is GPU-heavy — large, low-frequency surfaces only. Activating Tier 2 in the app needs the SVG <code>#liquid-refraction</code> filter mounted once at the app root.
+      </div>
+    </section>
+
+    <!-- 6. MOTION -->
+    <section class="block" id="motion">
+      <div class="sec-head">
+        <span class="sec-num">06 — System</span>
+        <h2>Motion</h2>
+        <p class="lede">Functional, physics-based, and fast. Try the demos. Toggle <strong>Reduce motion</strong> in the header to feel the accessible fallback. Animate only <code>transform</code> and <code>opacity</code>.</p>
+      </div>
+
+      <h3>Duration tokens</h3>
+      <p class="lede" style="margin-bottom:14px">Micro 100–200ms · component 200–300ms · page 300–500ms. <strong>Never exceed 500ms.</strong></p>
+      <div class="grid g3">
+        <div class="demo">
+          <h4>fast · 120ms</h4><p>hover, press, toggle, checkbox</p>
+          <div class="track" data-d="120ms"><div class="mover"></div></div>
+          <button class="btn btn-outline btn-sm replay">Replay</button>
+        </div>
+        <div class="demo">
+          <h4>standard · 220ms</h4><p>dropdown, popover, tooltip</p>
+          <div class="track" data-d="220ms"><div class="mover"></div></div>
+          <button class="btn btn-outline btn-sm replay">Replay</button>
+        </div>
+        <div class="demo">
+          <h4>slow · 400ms</h4><p>modal, sheet, route transition</p>
+          <div class="track" data-d="400ms"><div class="mover"></div></div>
+          <button class="btn btn-outline btn-sm replay">Replay</button>
+        </div>
+      </div>
+
+      <h3>Easing tokens</h3>
+      <p class="lede" style="margin-bottom:14px">Easing is a verb. Entrances ease-out (responsive); exits ease-in and faster; A→B ease-in-out; linear only for spinners.</p>
+      <div class="grid g4">
+        <div class="demo"><h4>enter</h4><p>ease-out</p><div class="track" data-d="600ms" data-e="cubic-bezier(0,0,0.2,1)"><div class="mover"></div></div><button class="btn btn-outline btn-sm replay">Replay</button></div>
+        <div class="demo"><h4>exit</h4><p>ease-in</p><div class="track" data-d="600ms" data-e="cubic-bezier(0.4,0,1,1)"><div class="mover"></div></div><button class="btn btn-outline btn-sm replay">Replay</button></div>
+        <div class="demo"><h4>standard</h4><p>ease-in-out</p><div class="track" data-d="600ms" data-e="cubic-bezier(0.4,0,0.2,1)"><div class="mover"></div></div><button class="btn btn-outline btn-sm replay">Replay</button></div>
+        <div class="demo"><h4>linear</h4><p>spinners only</p><div class="track" data-d="600ms" data-e="linear"><div class="mover"></div></div><button class="btn btn-outline btn-sm replay">Replay</button></div>
+      </div>
+
+      <h3>Pattern gallery</h3>
+      <div class="grid g3">
+        <div class="demo">
+          <h4>Hover &amp; press</h4><p>≤120ms, subtle press</p>
+          <button class="btn btn-primary">Hover / click me</button>
+        </div>
+        <div class="demo">
+          <h4>Popover reveal</h4><p>fade + rise, 220ms</p>
+          <button class="btn btn-outline btn-sm" id="revealBtn">Toggle</button>
+          <div class="reveal card" id="revealBox" style="margin-top:10px;padding:12px"><span class="mono-note">Revealed content</span></div>
+        </div>
+        <div class="demo">
+          <h4>Modal</h4><p>overlay fade + scale, 400ms</p>
+          <button class="btn btn-outline btn-sm" id="openModal">Open modal</button>
+        </div>
+        <div class="demo">
+          <h4>Sheet / drawer</h4><p>slide from edge, 400ms</p>
+          <button class="btn btn-outline btn-sm" id="sheetBtn">Toggle sheet</button>
+          <div class="sheet-stage" id="sheetStage" style="margin-top:10px"><div class="sheet"><span class="mono-note">Filters panel</span></div></div>
+        </div>
+        <div class="demo">
+          <h4>List stagger</h4><p>first render only, ≤200ms total</p>
+          <button class="btn btn-outline btn-sm" id="staggerBtn">Replay</button>
+          <ul class="stagger go" id="staggerList" style="margin-top:10px"><li>Transaction A</li><li>Transaction B</li><li>Transaction C</li><li>Transaction D</li></ul>
+        </div>
+        <div class="demo">
+          <h4>Skeleton shimmer</h4><p>steady ambient loading</p>
+          <div class="skel" style="width:80%"></div><div class="skel" style="width:60%"></div><div class="skel" style="width:70%;margin-bottom:0"></div>
+        </div>
+        <div class="demo">
+          <h4>KPI count-up</h4><p>≤400ms on value change</p>
+          <div class="kpi"><div class="v num" id="countVal">$0</div></div>
+          <button class="btn btn-outline btn-sm" id="countBtn" style="margin-top:8px">Count up</button>
+        </div>
+        <div class="demo">
+          <h4>Toast</h4><p>slide + fade, auto-dismiss</p>
+          <button class="btn btn-outline btn-sm" id="toastBtn">Show toast</button>
+          <div class="toast-stage" id="toastStage" style="margin-top:10px"><div class="toast"><svg width="16" height="16" viewBox="0 0 24 24" class="icon" style="color:var(--trend-positive)"><path d="M20 6 9 17l-5-5"/></svg> Saved</div></div>
+        </div>
+        <div class="demo">
+          <h4>Focus ring</h4><p>instant show, ~150ms hide</p>
+          <input class="input" placeholder="Tab to focus me" />
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:18px">
+        <strong>Motion budget:</strong> no single animation &gt; 500ms · total initial-viewport motion ≤ 800ms · scroll reveals fire once · keep INP &lt; 200ms · always honor <code>prefers-reduced-motion</code>. Library policy: CSS + <code>tw-animate-css</code> + Radix <code>data-state</code> cover this with zero new dependencies; a motion library needs approval first.
+      </div>
+    </section>
+
+    <!-- 7. COMPONENTS -->
+    <section class="block" id="components">
+      <div class="sec-head">
+        <span class="sec-num">07 — System</span>
+        <h2>Components</h2>
+        <p class="lede">Prefer shadcn/ui + Radix; compose, don't fork. Every interactive component defines: default, hover, active, focus-visible, disabled, loading, empty, error.</p>
+      </div>
+
+      <h3>Buttons</h3>
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-outline">Outline</button>
+        <button class="btn btn-secondary">Secondary</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-destructive">Destructive</button>
+        <button class="btn btn-primary" disabled><svg width="15" height="15" viewBox="0 0 24 24" class="icon" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.2-8.5"/></svg> Loading…</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+      </div>
+
+      <h3>KPI / stat cards — colored by intent</h3>
+      <div class="grid g4">
+        <div class="card">
+          <div class="kpi">
+            <div><div class="t">Total balance</div><div class="v num">$56,200</div><div class="mono-note">vs last month</div></div>
+            <span class="icon-tile" style="background:color-mix(in oklab,var(--primary) 14%,transparent);color:var(--primary)"><svg width="20" height="20" viewBox="0 0 24 24" class="icon"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+          </div>
+          <div style="margin-top:8px"><span class="pill up">▲ 12.5%</span></div>
+        </div>
+        <div class="card">
+          <div class="kpi">
+            <div><div class="t">Income</div><div class="v num">$8,420</div><div class="mono-note">vs last month</div></div>
+            <span class="icon-tile" style="background:color-mix(in oklab,var(--type-income) 16%,transparent);color:var(--type-income)"><svg width="20" height="20" viewBox="0 0 24 24" class="icon"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span>
+          </div>
+          <div style="margin-top:8px"><span class="pill up">▲ 4.2%</span></div>
+        </div>
+        <div class="card">
+          <div class="kpi">
+            <div><div class="t">Expenses</div><div class="v num">$3,180</div><div class="mono-note">vs last month</div></div>
+            <span class="icon-tile" style="background:color-mix(in oklab,var(--type-expense) 16%,transparent);color:var(--type-expense)"><svg width="20" height="20" viewBox="0 0 24 24" class="icon"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span>
+          </div>
+          <div style="margin-top:8px"><span class="pill down">▼ 3.1%</span></div>
+        </div>
+        <div class="card">
+          <div class="kpi">
+            <div><div class="t">Savings</div><div class="v num">$2,840</div><div class="mono-note">vs last month</div></div>
+            <span class="icon-tile" style="background:color-mix(in oklab,var(--type-savings) 16%,transparent);color:var(--type-savings)"><svg width="20" height="20" viewBox="0 0 24 24" class="icon"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V19h4v-2h3v2h4v-4c1-.5 1.4-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/></svg></span>
+          </div>
+          <div style="margin-top:8px"><span class="pill up">▲ 8.9%</span></div>
+        </div>
+      </div>
+
+      <h3>Data table — right-aligned tabular money, row hover</h3>
+      <div class="card">
+        <table class="money">
+          <thead><tr><th>Date</th><th>Description</th><th>Type</th><th style="text-align:right">Amount</th></tr></thead>
+          <tbody>
+            <tr><td class="num">18 Jun 2026</td><td>Salary</td><td><span class="badge income">Income</span></td><td class="amt num" style="color:var(--type-income)">+$8,420.00</td></tr>
+            <tr><td class="num">17 Jun 2026</td><td>Groceries</td><td><span class="badge expense">Expense</span></td><td class="amt num" style="color:var(--type-expense)">-$141.30</td></tr>
+            <tr><td class="num">15 Jun 2026</td><td>Emergency fund</td><td><span class="badge savings">Savings</span></td><td class="amt num" style="color:var(--type-savings)">$1,000.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid g3" style="margin-top:16px">
+        <div class="muted-box"><div class="label" style="margin-bottom:8px">Loading</div><div class="skel" style="width:90%"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:80%;margin-bottom:0"></div></div>
+        <div class="muted-box"><div class="label" style="margin-bottom:8px">Empty (no data yet)</div><div class="empty-state" style="padding:10px 0"><div class="ring" style="width:40px;height:40px"><svg width="18" height="18" viewBox="0 0 24 24" class="icon"><path d="M12 5v14M5 12h14"/></svg></div><p class="mono-note" style="margin:0">No accounts yet</p></div></div>
+        <div class="muted-box"><div class="label" style="margin-bottom:8px">Error</div><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--destructive);font-size:0.82rem">Couldn't load <button class="btn btn-outline btn-sm">Retry</button></div></div>
+      </div>
+
+      <h3>Form controls</h3>
+      <div class="grid g2">
+        <div class="card" style="display:flex;flex-direction:column;gap:14px">
+          <div class="field"><label for="f1">Full name</label><input class="input" id="f1" value="Ada Lovelace" /></div>
+          <div class="field"><label for="f2">Email</label><input class="input invalid" id="f2" value="ada@" /><span class="err">Enter a valid email address</span></div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:16px;justify-content:center">
+          <label class="check"><input type="checkbox" checked /><span class="box"><svg width="12" height="12" viewBox="0 0 24 24" class="icon" style="stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span> Budget alerts</label>
+          <label class="check"><input type="checkbox" /><span class="box"><svg width="12" height="12" viewBox="0 0 24 24" class="icon" style="stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span> Marketing updates</label>
+          <div style="display:flex;align-items:center;gap:10px"><span class="switch" role="switch" aria-checked="true" tabindex="0" id="demoSwitch"><span class="knob"></span></span><span class="mono-note">Two-factor authentication</span></div>
+          <p class="mono-note" style="margin:0">Use shadcn <code>Checkbox</code>/<code>Switch</code> everywhere — never raw HTML checkboxes.</p>
+        </div>
+      </div>
+
+      <h3>Badges &amp; navigation</h3>
+      <div class="card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+        <span class="badge income">Income</span>
+        <span class="badge expense">Expense</span>
+        <span class="badge savings">Savings</span>
+        <span class="badge active"><svg width="12" height="12" viewBox="0 0 24 24" class="icon"><circle cx="12" cy="12" r="5"/></svg> Active</span>
+        <span style="display:inline-flex;gap:6px;margin-left:auto">
+          <span class="btn btn-sm" style="background:color-mix(in oklab,var(--accent) 22%,transparent);color:var(--foreground)">Dashboard</span>
+          <span class="btn btn-ghost btn-sm">Accounts</span>
+          <span class="btn btn-ghost btn-sm">Budgets</span>
+        </span>
+      </div>
+    </section>
+
+    <!-- 8. DATA -->
+    <section class="block" id="data">
+      <div class="sec-head">
+        <span class="sec-num">08 — System</span>
+        <h2>Data display</h2>
+        <p class="lede">Format via <code>Intl.NumberFormat</code> with locale derived from the currency/user. Tabular, right-aligned, masked where sensitive. No dev-only labels in the UI.</p>
+      </div>
+      <div class="grid g2">
+        <div class="card">
+          <div class="label" style="margin-bottom:10px">Currency &amp; masking</div>
+          <table class="money"><tbody>
+            <tr><td>USD</td><td class="amt num">$1,250.00</td></tr>
+            <tr><td>INR</td><td class="amt num">₹1,02,500.00</td></tr>
+            <tr><td>EUR</td><td class="amt num">€980,50</td></tr>
+            <tr><td>Account no.</td><td class="amt num">•••• 4291</td></tr>
+          </tbody></table>
+        </div>
+        <div class="card">
+          <div class="label" style="margin-bottom:10px">Empty state = onboarding moment</div>
+          <div class="empty-state">
+            <div class="ring"><svg width="22" height="22" viewBox="0 0 24 24" class="icon"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+            <p style="margin:0 0 4px;font-weight:500">No accounts yet</p>
+            <p class="mono-note" style="margin:0 0 12px">Add your first account to start tracking balances.</p>
+            <button class="btn btn-primary btn-sm">+ Add account</button>
+          </div>
+        </div>
+      </div>
+      <p class="lede" style="margin-top:12px">Distinguish <em>no data yet</em> (onboarding CTA, above) from <em>no results for current filters</em> (offer a "Clear filters" action). Use skeletons that match the final layout; reserve spinners for in-button async actions.</p>
+    </section>
+
+    <!-- 9. DO / DON'T -->
+    <section class="block" id="dodont">
+      <div class="sec-head">
+        <span class="sec-num">09 — Guardrails</span>
+        <h2>Do / Don't</h2>
+        <p class="lede">Each pair maps to a real pattern from the audit. Left is the rule; right is the anti-pattern to avoid.</p>
+      </div>
+      <div class="grid g2">
+        <div class="dd good"><div class="hd">✓ Color KPI icons by intent</div>
+          <div style="display:flex;gap:10px"><span class="icon-tile" style="background:color-mix(in oklab,var(--type-income) 16%,transparent);color:var(--type-income)"><svg width="18" height="18" viewBox="0 0 24 24" class="icon"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><span class="icon-tile" style="background:color-mix(in oklab,var(--type-expense) 16%,transparent);color:var(--type-expense)"><svg width="18" height="18" viewBox="0 0 24 24" class="icon"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span class="icon-tile" style="background:color-mix(in oklab,var(--type-savings) 16%,transparent);color:var(--type-savings)"><svg width="18" height="18" viewBox="0 0 24 24" class="icon"><circle cx="12" cy="12" r="8"/></svg></span></div>
+        </div>
+        <div class="dd bad"><div class="hd">✕ Every metric icon green</div>
+          <div style="display:flex;gap:10px"><span class="icon-tile" style="background:color-mix(in oklab,var(--type-income) 16%,transparent);color:var(--type-income)"><svg width="18" height="18" viewBox="0 0 24 24" class="icon"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><span class="icon-tile" style="background:color-mix(in oklab,var(--type-income) 16%,transparent);color:var(--type-income)"><svg width="18" height="18" viewBox="0 0 24 24" class="icon"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span class="icon-tile" style="background:color-mix(in oklab,var(--type-income) 16%,transparent);color:var(--type-income)"><svg width="18" height="18" viewBox="0 0 24 24" class="icon"><circle cx="12" cy="12" r="8"/></svg></span></div>
+        </div>
+
+        <div class="dd good"><div class="hd">✓ Right-aligned tabular money</div>
+          <table class="money"><tbody><tr><td>Rent</td><td class="amt num">$11,800.00</td></tr><tr><td>Coffee</td><td class="amt num">$9.99</td></tr></tbody></table>
+        </div>
+        <div class="dd bad"><div class="hd">✕ Left-aligned proportional digits</div>
+          <table class="money"><tbody><tr><td>Rent</td><td>$11,800.00</td></tr><tr><td>Coffee</td><td>$9.99</td></tr></tbody></table>
+        </div>
+
+        <div class="dd good"><div class="hd">✓ Real data + skeleton while loading</div>
+          <div class="skel" style="width:70%"></div><div class="skel" style="width:50%;margin-bottom:0"></div>
+        </div>
+        <div class="dd bad"><div class="hd">✕ Hardcoded mock numbers shipped</div>
+          <p class="mono-note" style="margin:0">e.g. a dashboard permanently showing <code>$56,200</code> unconnected to the API.</p>
+        </div>
+
+        <div class="dd good"><div class="hd">✓ Hide actions that don't work yet</div>
+          <p class="mono-note" style="margin:0">No "Add goal" button until the Goals page exists.</p>
+        </div>
+        <div class="dd bad"><div class="hd">✕ Dead buttons &amp; placeholder columns</div>
+          <p class="mono-note" style="margin:0">A "Change" column that is always <code>—</code>, or a button that does nothing.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- modal markup -->
+  <div class="overlay" id="modalOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+      <h3 id="mtitle" style="margin:0 0 6px">Delete transaction?</h3>
+      <p class="mono-note" style="margin:0 0 16px">This action cannot be undone.</p>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-outline" id="closeModal">Cancel</button>
+        <button class="btn btn-destructive" id="closeModal2">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <div class="wrap">
+      <p>Full spec: <a href="../frontend/DESIGN_LANGUAGE.md">frontend/DESIGN_LANGUAGE.md</a> · Enforced via <code>.cursor/rules/frontend-design-language.mdc</code> · Tokens source of truth: <code>frontend/src/index.css</code></p>
+      <p style="margin-top:18px;font-weight:600;color:var(--foreground)">References</p>
+      <div class="ref-list">
+        <p style="margin:4px 0"><a href="https://mantlr.com/blog/motion-design-principles-2026">Motion Design 2026 — Mantlr</a></p>
+        <p style="margin:4px 0"><a href="https://www.monotonomo.com/journal/motion-budget-fast-sites-2026/">The 2026 Motion Budget — Monotonomo</a></p>
+        <p style="margin:4px 0"><a href="https://atlassian.design/foundations/motion">Motion foundations — Atlassian Design</a></p>
+        <p style="margin:4px 0"><a href="https://adamarant.com/en/blog/functional-ui-animation-in-2026-the-checklist-before-it-ships">Functional UI animation 2026 — adamarant</a></p>
+        <p style="margin:4px 0"><a href="https://www.eleken.co/blog-posts/modern-fintech-design-guide">Fintech design guide 2026 — Eleken</a></p>
+        <p style="margin:4px 0"><a href="https://gapsystudio.com/blog/fintech-design-system/">Scalable fintech design system — Gapsy</a></p>
+        <p style="margin:4px 0"><a href="https://edwson.com/design-system-showcase.html">Institutional finance design system — Ed Chen</a></p>
+        <p style="margin:4px 0"><a href="https://wsa.design/news/fintech-saas-design-how-to-turn-product-complexity-into-clear-ux">Fintech SaaS UX — wsa.design</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+
+      // theme toggle
+      var themeBtn = document.getElementById("themeBtn");
+      themeBtn.addEventListener("click", function () {
+        var dark = root.classList.toggle("dark");
+        themeBtn.textContent = dark ? "Light" : "Dark";
+        themeBtn.setAttribute("aria-pressed", String(dark));
+      });
+
+      // reduce-motion toggle
+      var motionBtn = document.getElementById("motionBtn");
+      motionBtn.addEventListener("click", function () {
+        var on = document.body.classList.toggle("force-reduce");
+        motionBtn.setAttribute("aria-pressed", String(on));
+        motionBtn.textContent = on ? "Motion: off" : "Reduce motion";
+      });
+
+      // duration / easing track replays
+      function runTrack(track) {
+        var d = track.getAttribute("data-d");
+        var e = track.getAttribute("data-e");
+        if (d) track.style.setProperty("--d", d);
+        if (e) track.style.setProperty("--e", e);
+        track.classList.remove("run");
+        void track.offsetWidth; // reflow to restart
+        track.classList.add("run");
+      }
+      document.querySelectorAll(".track").forEach(function (t) { runTrack(t); });
+      document.querySelectorAll(".replay").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          runTrack(btn.closest(".demo").querySelector(".track"));
+        });
+      });
+
+      // popover reveal
+      var revealBtn = document.getElementById("revealBtn");
+      var revealBox = document.getElementById("revealBox");
+      revealBtn.addEventListener("click", function () { revealBox.classList.toggle("show"); });
+
+      // modal
+      var overlay = document.getElementById("modalOverlay");
+      document.getElementById("openModal").addEventListener("click", function () { overlay.classList.add("open"); });
+      function closeModal() { overlay.classList.remove("open"); }
+      document.getElementById("closeModal").addEventListener("click", closeModal);
+      document.getElementById("closeModal2").addEventListener("click", closeModal);
+      overlay.addEventListener("click", function (ev) { if (ev.target === overlay) closeModal(); });
+      document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeModal(); });
+
+      // sheet
+      var sheetStage = document.getElementById("sheetStage");
+      document.getElementById("sheetBtn").addEventListener("click", function () { sheetStage.classList.toggle("open"); });
+
+      // stagger
+      var staggerBtn = document.getElementById("staggerBtn");
+      var staggerList = document.getElementById("staggerList");
+      staggerBtn.addEventListener("click", function () {
+        staggerList.classList.remove("go");
+        void staggerList.offsetWidth;
+        staggerList.classList.add("go");
+      });
+
+      // count-up
+      var countBtn = document.getElementById("countBtn");
+      var countVal = document.getElementById("countVal");
+      countBtn.addEventListener("click", function () {
+        var target = 56200, start = 0, t0 = null;
+        var reduced = document.body.classList.contains("force-reduce") || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduced) { countVal.textContent = "$" + target.toLocaleString(); return; }
+        function step(ts) {
+          if (!t0) t0 = ts;
+          var p = Math.min((ts - t0) / 400, 1);
+          var v = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
+          countVal.textContent = "$" + v.toLocaleString();
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+
+      // toast
+      var toastBtn = document.getElementById("toastBtn");
+      var toast = document.querySelector("#toastStage .toast");
+      var toastTimer;
+      toastBtn.addEventListener("click", function () {
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2200);
+      });
+
+      // liquid glass tier-support badge
+      var tierBadge = document.getElementById("tierBadge");
+      if (tierBadge) {
+        var supported = (window.CSS && CSS.supports && (CSS.supports("backdrop-filter", "url(#x)") || CSS.supports("-webkit-backdrop-filter", "url(#x)")));
+        tierBadge.textContent = supported ? "Yes — Tier 2 active" : "No — falls back to Tier 1";
+        tierBadge.style.color = supported ? "var(--trend-positive)" : "var(--muted-foreground)";
+      }
+
+      // demo switch
+      var sw = document.getElementById("demoSwitch");
+      function toggleSwitch() { sw.setAttribute("aria-checked", sw.getAttribute("aria-checked") === "true" ? "false" : "true"); }
+      sw.addEventListener("click", toggleSwitch);
+      sw.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggleSwitch(); } });
+    })();
+  </script>
+</body>
+</html>

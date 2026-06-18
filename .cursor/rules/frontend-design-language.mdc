@@ -1,0 +1,60 @@
+---
+description: "PocketPal design language: tokens, surfaces, typography, motion, component + data conventions (frontend/)."
+globs: "frontend/src/**/*.ts,frontend/src/**/*.tsx,frontend/src/**/*.js,frontend/src/**/*.jsx"
+alwaysApply: false
+---
+
+PocketPal design language (normative summary). Full spec with rationale + examples: `frontend/DESIGN_LANGUAGE.md`. Keep both in sync.
+
+Principles:
+- Clarity over decoration; one clear hero metric per screen, supporting detail muted.
+- Trust through consistency: same action looks/behaves the same everywhere.
+- Accessibility (WCAG AA, keyboard, focus-visible, prefers-reduced-motion) is a foundation, not a QA step.
+- Motion is functional: every animation does one job (feedback, attention, state, spatial) or is removed.
+
+Color:
+- Use semantic tokens only (`primary`, `muted`, `destructive`, `card`, `glass-*`, `chart-1..5`, `sidebar-*`). Never raw hex/oklch in components.
+- Color by intent, not by habit: income/positive, expense, savings, status each map to an intent token. Do NOT make every metric/icon green.
+- Red is reserved for errors + destructive actions.
+- Dark mode is first-class (`dark:` variants). Verify contrast, especially text on glass.
+
+Typography:
+- Font `font-sans` (DM Sans). 1.25 scale; weights 400/500/600.
+- Mandatory `tabular-nums` on ALL money, percentages, and counts (KPIs, table cells, chart axes).
+
+Spacing & layout:
+- 4px grid / 8px rhythm: `gap-2/4/6/8`, `p-4/6/8`. No arbitrary one-off values.
+- Use `app-content-frame`, `app-page-grid` + `GridItem`, `app-page-stack`. Radius scale from `--radius` (`rounded-lg/md/sm`, pills `rounded-full`).
+
+Surfaces (glass vs flat) — decide by density, not by screen:
+- Glass (`.glass`/`.app-surface`/`glass-strong`): shell, header, nav, KPI cards, modals/sheets/popovers, auth hero.
+- Liquid Glass (`.liquid-glass`/`.liquid-glass-strong`, `--lg-*` tokens): preferred material for those same chrome/KPI/modal surfaces. Tier 2 `.liquid-glass-refract` is progressive-only (Chromium; falls back to Tier 1) and must keep the opaque `--lg-fallback` for `prefers-reduced-transparency`/`prefers-contrast`. Never behind dense data.
+- Opaque `card`: dense/text-heavy surfaces — tables, forms, settings panels.
+- Never put `backdrop-blur` on tiny elements (e.g. icon tiles). Shadows only from `--shadow-*`/`shadow-glass`/`shadow-liquid`.
+
+Icons:
+- `lucide-react` only. `size-4` inline, `size-5` standalone. Decorative → `aria-hidden`; icon-only controls → `aria-label` (+ tooltip when meaning isn't obvious, e.g. collapsed sidebar).
+
+Motion (tokens to adopt; ranges enforced now):
+- Durations: micro 100-200ms (`--motion-fast` 120), component 200-300ms (`--motion-standard` 220), page 300-500ms (`--motion-slow` 400). Never > 500ms.
+- Easing: enter = ease-out (`--ease-enter`), exit = ease-in (`--ease-exit`, faster than enter), A→B = ease-in-out (`--ease-standard`). `linear` only for indeterminate spinners.
+- Animate `transform`/`opacity` only (no width/height/top/left/box-shadow). Initial-viewport motion ≤ 800ms total; scroll reveals fire once.
+- Always honor `prefers-reduced-motion`. Implement with CSS + `tw-animate-css` + Radix `data-[state]`. No new animation library without approval (`.cursor/rules/dependencies-approval.mdc`).
+
+Components (prefer shadcn/ui + Radix; compose, don't fork):
+- Define states: default/hover/active/focus-visible/disabled/loading/empty/error.
+- Buttons: one primary per view; destructive uses `destructive`; show spinner + disabled while pending.
+- Forms: every input has a Label or aria-label; use shadcn `Checkbox`/`Switch` (no raw `<input type=checkbox>`).
+- Tables: money columns right-aligned + `tabular-nums`; provide loading/empty/error states; mobile = card list.
+- Modals/sheets: Radix wrappers with title + description and focus management.
+- Nav: consistent active treatment across sidebar + bottom nav.
+
+Data display & states:
+- Currency via `Intl.NumberFormat`, locale derived from currency/user (not hardcoded en-IN). Mask sensitive numbers (`•••• 1234`).
+- Empty states = onboarding (icon + guidance + primary CTA); distinguish "no data yet" from "no results for filters" (offer Clear filters). Use skeletons matching final layout; spinners only for in-button async.
+- One shared error treatment with retry.
+
+Never:
+- Ship mocked/hardcoded data, dead actions, fake profile defaults, or permanent placeholder columns/fields ("—").
+- Mix premium auth + plain app surfaces.
+- Left-align proportional-digit money, drop in raw HTML form controls, or use inline ad-hoc/linear UI timings.

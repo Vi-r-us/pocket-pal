@@ -65,6 +65,21 @@
   /* Soft radial tints painted behind the glass */
   --bg-tint-1: oklch(0.92 0.05 156 / 0.55);
   --bg-tint-2: oklch(0.96 0.01 90 / 0);
+
+  /* --- Liquid Glass material (Apple-style) ---
+     Builds on --glass-*. Tier 1 = pure CSS (all browsers).
+     Tier 2 = SVG refraction, progressively enhanced via @supports. */
+  --lg-tint-top: oklch(1 0 0 / 0.22);
+  --lg-tint-bottom: oklch(1 0 0 / 0.04);
+  --lg-blur: 18px;
+  --lg-saturate: 180%;
+  --lg-brightness: 1.06;
+  --lg-rim: oklch(1 0 0 / 0.65); /* specular edge highlight */
+  --lg-rim-soft: oklch(1 0 0 / 0.18);
+  --lg-shadow: 0 8px 32px 0 oklch(0.3 0.04 158 / 0.16);
+  --lg-fallback: oklch(0.99 0.01 120 / 0.92); /* opaque fallback for reduced transparency / contrast */
+  --lg-refract-scale: 24; /* feDisplacementMap scale */
+  --lg-refract-freq: 0.008; /* feTurbulence baseFrequency */
 }
 
 .dark {
@@ -122,6 +137,19 @@
 
   --bg-tint-1: oklch(0.55 0.14 156 / 0.22);
   --bg-tint-2: oklch(0.19 0.03 160 / 0);
+
+  /* --- Liquid Glass material (dark) --- */
+  --lg-tint-top: oklch(1 0 0 / 0.1);
+  --lg-tint-bottom: oklch(1 0 0 / 0.02);
+  --lg-blur: 22px;
+  --lg-saturate: 160%;
+  --lg-brightness: 1.12;
+  --lg-rim: oklch(1 0 0 / 0.3);
+  --lg-rim-soft: oklch(1 0 0 / 0.08);
+  --lg-shadow: 0 8px 32px 0 oklch(0 0 0 / 0.45);
+  --lg-fallback: oklch(0.24 0.03 160 / 0.92);
+  --lg-refract-scale: 28;
+  --lg-refract-freq: 0.008;
 }
 
 @layer base {
@@ -190,6 +218,71 @@
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
   }
 
+  /* --- Liquid Glass (Tier 1: pure CSS, all browsers) ---
+     Layered translucent fill + blur/saturate/brightness, depth highlights,
+     and a masked gradient "specular rim" on ::after.
+     Reserve for chrome/KPI/modal surfaces; keep dense data on opaque cards. */
+  .liquid-glass,
+  .liquid-glass-strong {
+    position: relative;
+    isolation: isolate;
+    background-image: linear-gradient(
+      135deg,
+      var(--lg-tint-top) 0%,
+      var(--lg-tint-bottom) 55%,
+      var(--lg-tint-top) 100%
+    );
+    background-color: var(--glass-bg);
+    border: 1px solid transparent;
+    box-shadow:
+      inset 0 1px 1px 0 var(--lg-rim),
+      inset 0 -1px 1px 0 var(--lg-rim-soft),
+      var(--lg-shadow);
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+  }
+
+  .liquid-glass-strong {
+    background-color: var(--glass-bg-strong);
+  }
+
+  /* Specular gradient rim drawn as a masked 1px border ring. */
+  .liquid-glass::after,
+  .liquid-glass-strong::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      var(--lg-rim) 0%,
+      transparent 38%,
+      transparent 62%,
+      var(--lg-rim-soft) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Tier 2: real edge refraction via SVG displacement, Chromium-leaning.
+     Requires an SVG <filter id="liquid-refraction"> mounted in the DOM.
+     Falls back to Tier 1 where backdrop-filter: url() is unsupported. */
+  @supports ((backdrop-filter: url(#x)) or (-webkit-backdrop-filter: url(#x))) {
+    .liquid-glass-refract {
+      backdrop-filter: url(#liquid-refraction) blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+      -webkit-backdrop-filter: url(#liquid-refraction) blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+    }
+  }
+
   .chart-cq {
     container-type: inline-size;
   }
@@ -227,6 +320,26 @@
     .chart-cq-list {
       flex: 1 1 0;
     }
+  }
+}
+
+/* Liquid Glass accessibility fallbacks: drop translucency/blur to a near-opaque
+   surface so foreground text stays legible when the user prefers reduced
+   transparency or higher contrast. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .liquid-glass,
+  .liquid-glass-strong,
+  .liquid-glass-refract {
+    background-image: none;
+    background-color: var(--lg-fallback);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--border);
+  }
+
+  .liquid-glass::after,
+  .liquid-glass-strong::after {
+    display: none;
   }
 }
 
