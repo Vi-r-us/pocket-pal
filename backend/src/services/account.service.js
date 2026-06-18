@@ -2,7 +2,9 @@ import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
 import { Op } from "sequelize";
-import { Account, Currency } from "../models/index.js";
+import { sequelize } from "../db/sequelize.js";
+import { Account, Currency, Transaction } from "../models/index.js";
+import { computeBalanceFromTransactions } from "../utils/accountBalance.js";
 import { createLog } from "./log.service.js";
 import getState from "../utils/logUtils.js";
 
@@ -314,10 +316,124 @@ const deleteAccount = async (userId, accountId) => {
   }
 };
 
+/**
+ * Recompute balance_minor from opening_balance_minor + sum of transaction deltas.
+ */
+const reconcileAccountBalance = async (userId, accountId) => {
+  logger.info({ userId, accountId }, "reconcileAccountBalance called");
+
+  if (userId == null || userId === "") {
+    throw new ApiError(400, "User ID is required");
+  }
+  if (accountId == null || accountId === "") {
+    throw new ApiError(400, "Account ID is required");
+  }
+
+  try {
+    return await sequelize.transaction(async (dbTransaction) => {
+      const account = await Account.findOne({
+        where: { account_id: accountId, user_id: userId },
+        transaction: dbTransaction,
+        lock: dbTransaction.LOCK.UPDATE,
+      });
+
+      if (!account) {
+        throw new ApiError(404, "Account not found");
+      }
+
+      const transactions = await Transaction.findAll({
+        where: { user_id: userId, account_id: accountId },
+        attributes: ["type", "amount_minor", "metadata"],
+        transaction: dbTransaction,
+      });
+
+      const openingBalanceMinor = Number(account.opening_balance_minor);
+      const previousBalanceMinor = Number(account.balance_minor);
+      const computedBalanceMinor = computeBalanceFromTransactions(openingBalanceMinor, transactions);
+      const adjusted = computedBalanceMinor !== previousBalanceMinor;
+
+      if (adjusted) {
+        await account.update({ balance_minor: computedBalanceMinor }, { transaction: dbTransaction });
+
+        await createLog({
+          user_id: userId,
+          log_type: "audit",
+          action: "update",
+          entity: "account",
+          entity_id: accountId,
+          message: "Account balance synced from transactions",
+          details: {
+            source: "account.service.reconcileAccountBalance",
+            transaction_count: transactions.length,
+          },
+          old_value: { balance_minor: previousBalanceMinor },
+          new_value: { balance_minor: computedBalanceMinor },
+          field_name: "balance_minor",
+        });
+      }
+
+      logger.info(
+        { userId, accountId, adjusted, previousBalanceMinor, computedBalanceMinor },
+        "Account balance reconciled"
+      );
+
+      return {
+        account_id: accountId,
+        opening_balance_minor: openingBalanceMinor,
+        previous_balance_minor: previousBalanceMinor,
+        computed_balance_minor: computedBalanceMinor,
+        adjusted,
+        transaction_count: transactions.length,
+      };
+    });
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw handleServerError(error, "Error reconciling account balance", 500);
+  }
+};
+
+/**
+ * Reconcile balance_minor for all accounts owned by the user.
+ */
+const reconcileAllAccountBalances = async (userId) => {
+  logger.info({ userId }, "reconcileAllAccountBalances called");
+
+  if (userId == null || userId === "") {
+    throw new ApiError(400, "User ID is required");
+  }
+
+  try {
+    const accounts = await Account.findAll({
+      where: { user_id: userId },
+      attributes: ["account_id"],
+      order: [["account_id", "ASC"]],
+    });
+
+    const results = [];
+    for (const account of accounts) {
+      const result = await reconcileAccountBalance(userId, account.account_id);
+      results.push(result);
+    }
+
+    const accountsAdjusted = results.filter((row) => row.adjusted).length;
+
+    return {
+      accounts_checked: results.length,
+      accounts_adjusted: accountsAdjusted,
+      results,
+    };
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw handleServerError(error, "Error reconciling account balances", 500);
+  }
+};
+
 export {
   fetchAccounts,
   fetchAccount,
   createAccount,
   updateAccount,
   deleteAccount,
+  reconcileAccountBalance,
+  reconcileAllAccountBalances,
 };
