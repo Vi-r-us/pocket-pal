@@ -80,6 +80,23 @@
   --lg-fallback: oklch(0.99 0.01 120 / 0.92); /* opaque fallback for reduced transparency / contrast */
   --lg-refract-scale: 24; /* feDisplacementMap scale */
   --lg-refract-freq: 0.008; /* feTurbulence baseFrequency */
+
+  /* --- Finance-semantic intent colors --- */
+  --trend-positive: oklch(0.65 0.16 152);
+  --trend-negative: oklch(0.62 0.2 18);
+  --type-income: oklch(0.65 0.16 152);
+  --type-expense: oklch(0.62 0.2 18);
+  --type-savings: oklch(0.58 0.14 245);
+  --status-active: oklch(0.65 0.16 152);
+  --status-inactive: var(--muted-foreground);
+
+  /* --- Motion tokens (theme-independent) --- */
+  --motion-fast: 120ms;
+  --motion-standard: 220ms;
+  --motion-slow: 400ms;
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
@@ -150,6 +167,14 @@
   --lg-fallback: oklch(0.24 0.03 160 / 0.92);
   --lg-refract-scale: 28;
   --lg-refract-freq: 0.008;
+
+  /* --- Finance-semantic intent colors (dark) --- */
+  --trend-positive: oklch(0.8 0.14 152);
+  --trend-negative: oklch(0.7 0.18 20);
+  --type-income: oklch(0.8 0.14 152);
+  --type-expense: oklch(0.7 0.18 20);
+  --type-savings: oklch(0.72 0.12 245);
+  --status-active: oklch(0.8 0.14 152);
 }
 
 @layer base {
@@ -340,6 +365,19 @@
   .liquid-glass::after,
   .liquid-glass-strong::after {
     display: none;
+  }
+}
+
+/* Global reduced-motion fallback: neutralize non-essential animation and
+   transitions when the user requests reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

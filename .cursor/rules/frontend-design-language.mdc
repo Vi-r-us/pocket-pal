@@ -14,7 +14,7 @@ Principles:
 
 Color:
 - Use semantic tokens only (`primary`, `muted`, `destructive`, `card`, `glass-*`, `chart-1..5`, `sidebar-*`). Never raw hex/oklch in components.
-- Color by intent, not by habit: income/positive, expense, savings, status each map to an intent token. Do NOT make every metric/icon green.
+- Color by intent, not by habit: use the live intent utilities `text-/bg-trend-positive|trend-negative`, `type-income|type-expense|type-savings`, `status-active|status-inactive` (tint with `/10`). Do NOT make every metric/icon green.
 - Red is reserved for errors + destructive actions.
 - Dark mode is first-class (`dark:` variants). Verify contrast, especially text on glass.
 
@@ -28,16 +28,18 @@ Spacing & layout:
 
 Surfaces (glass vs flat) — decide by density, not by screen:
 - Glass (`.glass`/`.app-surface`/`glass-strong`): shell, header, nav, KPI cards, modals/sheets/popovers, auth hero.
-- Liquid Glass (`.liquid-glass`/`.liquid-glass-strong`, `--lg-*` tokens): preferred material for those same chrome/KPI/modal surfaces. Tier 2 `.liquid-glass-refract` is progressive-only (Chromium; falls back to Tier 1) and must keep the opaque `--lg-fallback` for `prefers-reduced-transparency`/`prefers-contrast`. Never behind dense data.
+- Liquid Glass (`.liquid-glass`/`.liquid-glass-strong`, `--lg-*` tokens): the material for chrome/floating surfaces — in use on the sidebar, mobile bottom nav, header, and profile popover. Tier 2 `.liquid-glass-refract` (on hero chrome: sidebar + bottom nav) requires the `#liquid-refraction` SVG mounted at the app root (`LiquidGlassFilter` in `AppShell`); it is progressive-only (Chromium; falls back to Tier 1) and keeps the opaque `--lg-fallback` for `prefers-reduced-transparency`/`prefers-contrast`. Never behind dense data (KPI cards, tables, form modals stay opaque `card`).
 - Opaque `card`: dense/text-heavy surfaces — tables, forms, settings panels.
 - Never put `backdrop-blur` on tiny elements (e.g. icon tiles). Shadows only from `--shadow-*`/`shadow-glass`/`shadow-liquid`.
 
 Icons:
 - `lucide-react` only. `size-4` inline, `size-5` standalone. Decorative → `aria-hidden`; icon-only controls → `aria-label` (+ tooltip when meaning isn't obvious, e.g. collapsed sidebar).
 
-Motion (tokens to adopt; ranges enforced now):
-- Durations: micro 100-200ms (`--motion-fast` 120), component 200-300ms (`--motion-standard` 220), page 300-500ms (`--motion-slow` 400). Never > 500ms.
-- Easing: enter = ease-out (`--ease-enter`), exit = ease-in (`--ease-exit`, faster than enter), A→B = ease-in-out (`--ease-standard`). `linear` only for indeterminate spinners.
+Motion (tokens live in index.css; use the Tailwind utilities):
+- Durations: micro 100-200ms (`--motion-fast` 120 = `duration-fast`), component 200-300ms (`--motion-standard` 220 = `duration-standard`), page 300-500ms (`--motion-slow` 400 = `duration-slow`). Never > 500ms.
+- Easing: enter = ease-out (`--ease-enter` = `ease-enter`), exit = ease-in (`--ease-exit` = `ease-exit`, faster than enter), A→B = ease-in-out (`--ease-standard` = `ease-standard`). `linear` only for indeterminate spinners.
+- Global `prefers-reduced-motion` fallback is live in index.css.
+- Applied: Button hover/press (`duration-fast ease-standard`); Radix overlays enter `duration-standard ease-enter` / exit `duration-fast ease-exit`; routed page container does a mount-only fade+rise keyed by route. Reuse these utilities; do not hardcode ad-hoc `duration-100` etc.
 - Animate `transform`/`opacity` only (no width/height/top/left/box-shadow). Initial-viewport motion ≤ 800ms total; scroll reveals fire once.
 - Always honor `prefers-reduced-motion`. Implement with CSS + `tw-animate-css` + Radix `data-[state]`. No new animation library without approval (`.cursor/rules/dependencies-approval.mdc`).
 

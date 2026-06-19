@@ -41,19 +41,21 @@ PocketPal uses a calm green primary with a glassmorphism layer, defined as `oklc
 | `glass` / `glass-strong` / `glass-border` / `glass-highlight` | Translucent surfaces |
 | `chart-1` … `chart-5` | Data-viz series palette |
 
-#### Finance-semantic aliases **(to adopt)**
+#### Finance-semantic aliases **(available)**
 
-Today, financial meaning is expressed with scattered hardcoded Tailwind colors (`emerald`, `rose`, `blue`) across `MetricStatCard`, `TransactionsPage`, `AccountsPage`, etc. Standardize them into intent tokens so meaning is consistent and themable:
+These intent tokens are live in [`src/index.css`](src/index.css) (light + dark) and mapped in [`tailwind.config.js`](tailwind.config.js), so financial meaning is consistent and themable instead of being scattered hardcoded `emerald` / `rose` / `blue`. Components still need migrating onto them (Phase 3); new code should use them now via the listed utilities.
 
-| Token (to adopt) | Meaning | Current ad-hoc value |
-| --- | --- | --- |
-| `--trend-positive` | Gains, upward trend | emerald-600 / emerald-400 |
-| `--trend-negative` | Losses, downward trend | red/rose-600 / 400 |
-| `--type-income` | Income transactions | emerald |
-| `--type-expense` | Expense transactions | rose |
-| `--type-savings` | Savings / transfers | blue |
-| `--status-active` | Active account / on state | emerald |
-| `--status-inactive` | Inactive / off state | muted-foreground |
+| Token | Tailwind utility | Meaning | Replaces |
+| --- | --- | --- | --- |
+| `--trend-positive` | `text-trend-positive`, `bg-trend-positive` | Gains, upward trend | emerald-600 / 400 |
+| `--trend-negative` | `text-trend-negative`, `bg-trend-negative` | Losses, downward trend | red/rose-600 / 400 |
+| `--type-income` | `text-type-income`, `bg-type-income` | Income transactions | emerald |
+| `--type-expense` | `text-type-expense`, `bg-type-expense` | Expense transactions | rose |
+| `--type-savings` | `text-type-savings`, `bg-type-savings` | Savings / transfers | blue |
+| `--status-active` | `text-status-active`, `bg-status-active` | Active account / on state | emerald |
+| `--status-inactive` | `text-status-inactive` | Inactive / off state | muted-foreground |
+
+Use opacity modifiers for tinted fills, e.g. `bg-type-income/10`.
 
 #### Color usage rules
 
@@ -107,8 +109,8 @@ An Apple-inspired evolution of the frosted glass, driven by the `--lg-*` tokens 
 
 Two tiers:
 
-- **Tier 1 — `.liquid-glass` / `.liquid-glass-strong` (default, all browsers).** Pure CSS: `backdrop-filter: blur() saturate() brightness()`, a layered gradient fill, inset top/bottom highlights, soft shadow, and a masked gradient-border rim on `::after`. This is the baseline material to reach for on shell, header, sidebar, bottom nav, KPI cards, modals/sheets, and the auth hero.
-- **Tier 2 — `.liquid-glass-refract` (progressive enhancement).** Adds genuine edge lensing via an SVG `feTurbulence` + `feDisplacementMap` filter referenced through `backdrop-filter: url(#liquid-refraction)`, gated behind `@supports`. **Browser reality:** this renders in Chromium; Safari/Firefox fall back to Tier 1 automatically. Activating Tier 2 in the live app requires mounting the `<filter id="liquid-refraction">` SVG once at the app root — deferred to a rollout pass; it is demonstrated today in [`design/index.html`](../design/index.html).
+- **Tier 1 — `.liquid-glass` / `.liquid-glass-strong` (default, all browsers).** Pure CSS: `backdrop-filter: blur() saturate() brightness()`, a layered gradient fill, inset top/bottom highlights, soft shadow, and a masked gradient-border rim on `::after`. This is the baseline material for **chrome and floating surfaces** — currently applied to the sidebar, mobile bottom nav, sticky header, and the profile popover (the `-strong` variant for the header/popover). Keep it off dense-data surfaces (KPI cards, tables, form modals stay opaque `card`).
+- **Tier 2 — `.liquid-glass-refract` (progressive enhancement).** Adds genuine edge lensing via an SVG `feTurbulence` + `feDisplacementMap` filter referenced through `backdrop-filter: url(#liquid-refraction)`, gated behind `@supports`. **Browser reality:** this renders in Chromium; Safari/Firefox fall back to Tier 1 automatically. The `<filter id="liquid-refraction">` SVG is now mounted once at the app root via [`LiquidGlassFilter`](src/components/layout/LiquidGlassFilter.tsx) (rendered in [`AppShell`](src/components/layout/AppShell.tsx)), and Tier 2 is applied to the hero chrome (sidebar + mobile bottom nav). It is also demonstrated in [`design/index.html`](../design/index.html).
 
 Constraints (non-negotiable):
 
@@ -137,7 +139,9 @@ Motion is a first-class part of the design language. The goal is a product that 
 - **Interruptible.** State drives the animation, never the reverse — a user can always reverse or dismiss mid-motion.
 - **Animate compositor-friendly properties only:** `transform` and `opacity`. Avoid animating `width`, `height`, `top/left`, `box-shadow`, or layout-triggering properties.
 
-### 3.2 Duration tokens **(to adopt)**
+### 3.2 Duration tokens **(available)**
+
+Live in [`src/index.css`](src/index.css); use via Tailwind `duration-fast` / `duration-standard` / `duration-slow`.
 
 ```css
 --motion-fast: 120ms;     /* hover, focus, press, toggle, checkbox */
@@ -147,7 +151,9 @@ Motion is a first-class part of the design language. The goal is a product that 
 
 Ranges: micro-interactions 100–200ms · component state 200–300ms · page/large 300–500ms. **Nothing exceeds 500ms.** If unsure, go shorter — 150ms feels snappy, 500ms feels sluggish, 800ms feels broken.
 
-### 3.3 Easing tokens **(to adopt)**
+### 3.3 Easing tokens **(available)**
+
+Live in [`src/index.css`](src/index.css); use via Tailwind `ease-enter` / `ease-exit` / `ease-standard`.
 
 ```css
 --ease-enter: cubic-bezier(0, 0, 0.2, 1);      /* ease-out: elements entering */
@@ -160,7 +166,9 @@ Ranges: micro-interactions 100–200ms · component state 200–300ms · page/la
 - Exits use `--ease-exit` and are **faster than entrances** (the user already decided; don't make them wait).
 - Movement between two states of one element uses `--ease-standard`.
 
-### 3.4 Patterns (implement with current tools — no new deps)
+### 3.4 Patterns (implemented with current tools — no new deps)
+
+> **Status:** applied. Buttons use `duration-fast ease-standard` for hover/press; the Radix overlays (dialog, alert-dialog, popover, dropdown-menu, select, tooltip, sheet) enter with `duration-standard ease-enter` and exit faster with `duration-fast ease-exit`; backdrops fade with `duration-fast`; the routed page container in [`AppShell`](src/components/layout/AppShell.tsx) does a mount-only `fade + slide-in-from-bottom-1` (`duration-standard ease-enter`), keyed by route. All of it is neutralized by the global `prefers-reduced-motion` fallback (§3.6).
 
 The stack already includes `tw-animate-css`, Radix (`data-[state]` attributes), `recharts`, and `sonner`. Use them:
 
@@ -186,7 +194,7 @@ The stack already includes `tw-animate-css`, Radix (`data-[state]` attributes), 
 
 ### 3.6 Reduced motion (required)
 
-Always honor `prefers-reduced-motion`. Provide a global fallback that neutralizes non-essential motion **(to adopt in `src/index.css`)**:
+Always honor `prefers-reduced-motion`. A global fallback that neutralizes non-essential motion is **live in [`src/index.css`](src/index.css)**:
 
 ```css
 @media (prefers-reduced-motion: reduce) {

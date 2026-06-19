@@ -21,6 +21,7 @@ import {
   PageHeaderControlsInline,
   PageHeaderControlsMobileToolbar,
 } from "@/components/layout/PageHeaderControlsSlot";
+import { LiquidGlassFilter } from "@/components/layout/LiquidGlassFilter";
 import {
   PageHeaderControlsProvider,
   usePageHeaderControlsContext,
@@ -145,11 +146,6 @@ const pageHeaderPrimaryAction: Record<string, HeaderPrimaryAction> = {
     label: "Add Budget",
     shortLabel: "Add",
     actionKey: "create-budget",
-  },
-  "/goals": {
-    label: "Add Goal",
-    shortLabel: "Add",
-    actionKey: "create-goal",
   },
   "/settings/categories": {
     label: "Add Category Group",
@@ -340,9 +336,10 @@ const AppShellLayout = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <LiquidGlassFilter />
       <aside
         className={cn(
-          "glass fixed inset-y-0 left-0 z-30 my-2 ml-2 hidden flex-col rounded-lg border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-glass backdrop-blur-glass backdrop-saturate-150 transition-all duration-300 lg:flex",
+          "liquid-glass liquid-glass-refract fixed inset-y-0 left-0 z-30 my-2 ml-2 hidden flex-col rounded-lg border-r border-sidebar-border bg-sidebar/70 text-sidebar-foreground transition-all duration-300 lg:flex",
           isSidebarOpen ? "w-64 lg:w-72" : "w-14 md:w-16",
         )}
       >
@@ -387,7 +384,7 @@ const AppShellLayout = () => {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center rounded-md py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:py-2.5",
+                    "flex items-center rounded-md py-2 transition-colors duration-fast ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:py-2.5",
                     isSidebarOpen ? "gap-3 px-3" : "justify-center px-2",
                     isActive
                       ? "border-l-[3px] border-l-sidebar-primary bg-sidebar-accent/35 text-sidebar-foreground"
@@ -437,7 +434,7 @@ const AppShellLayout = () => {
           isSidebarOpen ? "lg:ml-64 xl:ml-72" : "lg:ml-14 xl:ml-16",
         )}
       >
-        <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+        <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
           <div
             className={cn(
               "app-content-frame flex items-center justify-between gap-3 md:gap-4",
@@ -508,7 +505,7 @@ const AppShellLayout = () => {
                     </Avatar>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-80 p-0">
+                <PopoverContent align="end" className="w-80 bg-popover/80 p-0 liquid-glass-strong">
                   <div className="space-y-3 p-4">
                     <div className="flex items-center gap-3">
                       <Avatar size="lg">
@@ -561,13 +558,16 @@ const AppShellLayout = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto bg-background py-4 md:py-6 xl:py-8">
-          <div className="app-content-frame app-page-grid">
+          <div
+            key={location.pathname}
+            className="app-content-frame app-page-grid animate-in fade-in-0 slide-in-from-bottom-1 duration-standard ease-enter"
+          >
             <Outlet />
           </div>
         </main>
       </div>
 
-      <nav className="glass fixed bottom-2 left-1/2 z-40 w-fit -translate-x-1/2 rounded-3xl border border-sidebar-border/70 bg-sidebar/70 px-2 py-2 shadow-glass backdrop-blur-glass backdrop-saturate-150 lg:hidden">
+      <nav className="liquid-glass liquid-glass-refract fixed bottom-2 left-1/2 z-40 w-fit -translate-x-1/2 rounded-3xl border border-sidebar-border/70 bg-sidebar/70 px-2 py-2 lg:hidden">
         <ul className="grid w-fit grid-cols-6 gap-4">
           {navigationItems.map((item) => {
             const Icon = item.icon
@@ -578,7 +578,7 @@ const AppShellLayout = () => {
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      "flex flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                      "flex flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium transition-colors duration-fast ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                       isActive
                         ? "bg-sidebar-accent/40 text-sidebar-foreground"
                         : "text-sidebar-foreground/75 hover:bg-sidebar-accent/20 hover:text-sidebar-foreground",

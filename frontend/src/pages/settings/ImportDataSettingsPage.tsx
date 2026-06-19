@@ -3,6 +3,7 @@ import { CheckCircle2, FileUp, ListChecks, MapPinned, Upload } from "lucide-reac
 import { Panel } from "@/components/layout/Panel"
 import { SettingsSectionShell } from "@/components/settings/SettingsSectionShell"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { api } from "@/lib/api"
 import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import type {
@@ -349,10 +350,9 @@ export const ImportDataSettingsPage = () => {
                   </div>
 
                   <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={skipDuplicates}
-                      onChange={(event) => setSkipDuplicates(event.target.checked)}
+                      onCheckedChange={(checked) => setSkipDuplicates(checked === true)}
                     />
                     Skip duplicates when supported
                   </label>

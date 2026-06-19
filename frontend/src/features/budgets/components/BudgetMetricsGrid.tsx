@@ -67,12 +67,7 @@ export const BudgetMetricsGrid = ({
           value={totalBudgetValue}
           footer={monthLabel}
           badge={noCurrencyBadge}
-          icon={
-            <Wallet
-              className="text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
-          }
+          icon={<Wallet aria-hidden />}
         />
       </GridItem>
 
@@ -82,12 +77,8 @@ export const BudgetMetricsGrid = ({
           value={totalSpentValue}
           footer={`Tracked expenses for ${monthLabel}`}
           badge={noCurrencyBadge}
-          icon={
-            <BanknoteArrowDown
-              className="text-rose-600 dark:text-rose-400"
-              aria-hidden
-            />
-          }
+          tone="expense"
+          icon={<BanknoteArrowDown aria-hidden />}
         />
       </GridItem>
 
@@ -97,12 +88,8 @@ export const BudgetMetricsGrid = ({
           value={remainingValue}
           footer={`Available after spend for ${monthLabel}`}
           badge={noCurrencyBadge}
-          icon={
-            <PiggyBank
-              className="text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
-          }
+          tone="income"
+          icon={<PiggyBank aria-hidden />}
         />
       </GridItem>
 
@@ -112,12 +99,8 @@ export const BudgetMetricsGrid = ({
           value={savingsValue}
           footer={`Saved in ${monthLabel}`}
           badge={noCurrencyBadge}
-          icon={
-            <BanknoteArrowUp
-              className="text-blue-600 dark:text-blue-400"
-              aria-hidden
-            />
-          }
+          tone="savings"
+          icon={<BanknoteArrowUp aria-hidden />}
         />
       </GridItem>
     </>

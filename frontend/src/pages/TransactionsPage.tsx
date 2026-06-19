@@ -66,15 +66,15 @@ const TYPE_LABELS: Record<TransactionType, string> = {
 }
 
 const TYPE_BADGE_CLASSES: Record<TransactionType, string> = {
-  income: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 glass-border glass-highlight rounded-full",
-  expense: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 glass-border glass-highlight rounded-full",
-  savings: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 glass-border glass-highlight rounded-full",
+  income: "border-type-income/30 bg-type-income/10 text-type-income glass-border glass-highlight rounded-full",
+  expense: "border-type-expense/30 bg-type-expense/10 text-type-expense glass-border glass-highlight rounded-full",
+  savings: "border-type-savings/30 bg-type-savings/10 text-type-savings glass-border glass-highlight rounded-full",
 }
 
 const TYPE_AMOUNT_TEXT_CLASSES: Record<TransactionType, string> = {
-  income: "text-emerald-700 dark:text-emerald-300",
-  expense: "text-rose-700 dark:text-rose-300",
-  savings: "text-blue-700 dark:text-blue-300",
+  income: "text-type-income",
+  expense: "text-type-expense",
+  savings: "text-type-savings",
 }
 
 const formatSourceLabel = (source: string) => source.charAt(0).toUpperCase() + source.slice(1)
@@ -267,7 +267,12 @@ const MobileTransactionCards = ({
                   </p>
                   <p className="truncate text-base text-wrap font-medium">{row.description}</p>
                 </div>
-                <p className={cn("shrink-0 text-sm font-semibold", TYPE_AMOUNT_TEXT_CLASSES[row.type])}>
+                <p
+                  className={cn(
+                    "shrink-0 text-sm font-semibold tabular-nums",
+                    TYPE_AMOUNT_TEXT_CLASSES[row.type]
+                  )}
+                >
                   {toCurrency(row.amount_minor, row.currency)}
                 </p>
               </div>
@@ -784,8 +789,9 @@ export const TransactionsPage = () => {
         accessorKey: "amount_minor",
         header: "Amount",
         enableSorting: true,
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <span className={cn(TYPE_AMOUNT_TEXT_CLASSES[row.original.type])}>
+          <span className={cn("tabular-nums", TYPE_AMOUNT_TEXT_CLASSES[row.original.type])}>
             {toCurrency(row.original.amount_minor, row.original.currency)}
           </span>
         ),
@@ -811,7 +817,8 @@ export const TransactionsPage = () => {
           title="This period income"
           value={incomeValue}
           footer={metricsFooter}
-          icon={<BanknoteArrowUp className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          tone="income"
+          icon={<BanknoteArrowUp aria-hidden />}
         />
       </GridItem>
 
@@ -820,7 +827,8 @@ export const TransactionsPage = () => {
           title="This period expenses"
           value={expenseValue}
           footer={metricsFooter}
-          icon={<BanknoteArrowDown className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          tone="expense"
+          icon={<BanknoteArrowDown aria-hidden />}
         />
       </GridItem>
 
@@ -829,7 +837,8 @@ export const TransactionsPage = () => {
           title="Net cash flow"
           value={netValue}
           footer="Income minus expenses (active filters)"
-          icon={<ArrowLeftRight className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          tone="savings"
+          icon={<ArrowLeftRight aria-hidden />}
         />
       </GridItem>
 
@@ -838,12 +847,7 @@ export const TransactionsPage = () => {
           title="Transactions"
           value={String(summary?.totals.transaction_count ?? total)}
           footer="In selected range"
-          badge={
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              Server data
-            </span>
-          }
-          icon={<Hash className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          icon={<Hash aria-hidden />}
         />
       </GridItem>
 

@@ -272,9 +272,9 @@ export function CategoryBreakdownChartCard({
           {trend ? (
             <div className="flex items-center gap-2 text-sm font-medium leading-none text-foreground">
               {trend.direction === "up" ? (
-                <TrendingUp className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                <TrendingUp className="h-4 w-4 shrink-0 text-trend-positive" aria-hidden />
               ) : (
-                <TrendingDown className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
+                <TrendingDown className="h-4 w-4 shrink-0 text-trend-negative" aria-hidden />
               )}
               <span>{trend.label}</span>
             </div>

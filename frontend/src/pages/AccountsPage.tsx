@@ -233,13 +233,7 @@ const AccountCardsList = ({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Balance</p>
-                  <p>{balanceLabel}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Change</p>
-                  <Badge variant="secondary" className="rounded-full">
-                    —
-                  </Badge>
+                  <p className="tabular-nums">{balanceLabel}</p>
                 </div>
               </div>
 
@@ -250,7 +244,7 @@ const AccountCardsList = ({
                   className={cn(
                     "rounded-full",
                     account.is_active
-                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      ? "border-status-active/40 bg-status-active/10 text-status-active"
                       : "border-muted-foreground/40 bg-muted text-muted-foreground"
                   )}
                 >
@@ -560,21 +554,16 @@ export const AccountsPage = () => {
         accessorKey: "balance_minor",
         header: "Balance",
         enableSorting: true,
+        meta: { align: "right" },
         cell: ({ row }) => {
           const currencyCode = row.original.currency_code || "USD"
           const minorUnit = getSafeMinorUnit(row.original.currency?.minor_unit)
-          return formatMinorAmount(toMinorNumber(row.original.balance_minor), currencyCode, minorUnit)
+          return (
+            <span className="tabular-nums">
+              {formatMinorAmount(toMinorNumber(row.original.balance_minor), currencyCode, minorUnit)}
+            </span>
+          )
         },
-      },
-      {
-        id: "change",
-        header: "Change",
-        enableSorting: false,
-        cell: () => (
-          <Badge variant="secondary" className="rounded-full">
-            —
-          </Badge>
-        ),
       },
       {
         accessorKey: "is_active",
@@ -586,7 +575,7 @@ export const AccountsPage = () => {
             className={cn(
               "rounded-full",
               row.original.is_active
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                ? "border-status-active/40 bg-status-active/10 text-status-active"
                 : "border-muted-foreground/40 bg-muted text-muted-foreground"
             )}
           >
@@ -663,7 +652,7 @@ export const AccountsPage = () => {
               </Badge>
             ) : undefined
           }
-          icon={<Wallet className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          icon={<Wallet aria-hidden />}
         />
       </GridItem>
 
@@ -672,7 +661,8 @@ export const AccountsPage = () => {
           title="Savings"
           value={savingsValue}
           footer={savingsAccountsCount === 1 ? "1 active savings account" : `${savingsAccountsCount} active savings accounts`}
-          icon={<PiggyBank className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          tone="savings"
+          icon={<PiggyBank aria-hidden />}
         />
       </GridItem>
 
@@ -681,7 +671,7 @@ export const AccountsPage = () => {
           title="Bank Accounts"
           value={bankValue}
           footer={bankAccountsCount === 1 ? "1 active bank account" : `${bankAccountsCount} active bank accounts`}
-          icon={<Landmark className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          icon={<Landmark aria-hidden />}
         />
       </GridItem>
 
@@ -690,7 +680,7 @@ export const AccountsPage = () => {
           title="Active Accounts"
           value={activeAccountsCount.toLocaleString("en-IN")}
           footer="Currently enabled"
-          icon={<Hash className="text-emerald-600 dark:text-emerald-400" aria-hidden />}
+          icon={<Hash aria-hidden />}
         />
       </GridItem>
 

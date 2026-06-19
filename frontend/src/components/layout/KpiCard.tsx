@@ -16,7 +16,7 @@ export type KpiCardProps = {
 }
 
 const deltaToneClass: Record<DeltaTone, string> = {
-  positive: "text-emerald-600 dark:text-emerald-400",
+  positive: "text-trend-positive",
   negative: "text-destructive",
   neutral: "text-muted-foreground",
 }
@@ -39,7 +39,7 @@ export const KpiCard = ({ label, value, delta, icon: Icon, loading, className }:
           </div>
         ) : (
           <>
-            <div className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+            <div className="text-2xl font-semibold tracking-tight text-foreground tabular-nums md:text-3xl">
               {value}
             </div>
             {delta ? (
