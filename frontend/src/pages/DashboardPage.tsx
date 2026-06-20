@@ -66,12 +66,7 @@ export const DashboardPage = () => {
           value="$56,200"
           footer="vs last month"
           trend={{ direction: "up", label: "12.5%" }}
-          icon={
-            <Wallet
-              className="text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
-          }
+          icon={<Wallet aria-hidden />}
         />
       </GridItem>
 
@@ -81,12 +76,8 @@ export const DashboardPage = () => {
           value="$2,840"
           footer="vs last month"
           trend={{ direction: "down", label: "3.1%" }}
-          icon={
-            <BanknoteArrowUp
-              className="text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
-          }
+          tone="income"
+          icon={<BanknoteArrowUp aria-hidden />}
         />
       </GridItem>
 
@@ -96,12 +87,8 @@ export const DashboardPage = () => {
           value="$2,840"
           footer="vs last month"
           trend={{ direction: "down", label: "3.1%" }}
-          icon={
-            <BanknoteArrowDown
-              className="text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
-          }
+          tone="expense"
+          icon={<BanknoteArrowDown aria-hidden />}
         />
       </GridItem>
 
@@ -111,12 +98,8 @@ export const DashboardPage = () => {
           value="$2,840"
           footer="vs last month"
           trend={{ direction: "down", label: "3.1%" }}
-          icon={
-            <PiggyBank
-              className="text-emerald-600 dark:text-emerald-400"
-              aria-hidden
-            />
-          }
+          tone="savings"
+          icon={<PiggyBank aria-hidden />}
         />
       </GridItem>
 

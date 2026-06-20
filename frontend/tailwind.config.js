@@ -58,6 +58,29 @@ export default {
           'rim-soft': 'var(--lg-rim-soft)',
           fallback: 'var(--lg-fallback)',
         },
+        trend: {
+          positive: 'var(--trend-positive)',
+          negative: 'var(--trend-negative)',
+        },
+        type: {
+          income: 'var(--type-income)',
+          expense: 'var(--type-expense)',
+          savings: 'var(--type-savings)',
+        },
+        status: {
+          active: 'var(--status-active)',
+          inactive: 'var(--status-inactive)',
+        },
+      },
+      transitionDuration: {
+        fast: 'var(--motion-fast)',
+        standard: 'var(--motion-standard)',
+        slow: 'var(--motion-slow)',
+      },
+      transitionTimingFunction: {
+        enter: 'var(--ease-enter)',
+        exit: 'var(--ease-exit)',
+        standard: 'var(--ease-standard)',
       },
       borderRadius: {
         lg: 'var(--radius)',

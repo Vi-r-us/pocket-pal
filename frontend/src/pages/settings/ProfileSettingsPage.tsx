@@ -8,10 +8,22 @@ import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { AppTheme } from "@/stores/usePrefsStore"
 import { usePrefsStore } from "@/stores/usePrefsStore"
+import { useAuthStore } from "@/stores/useAuthStore"
+
+const readUserField = (user: Record<string, unknown> | null, key: string) => {
+  const value = user?.[key]
+  return typeof value === "string" ? value.trim() : ""
+}
 
 export const ProfileSettingsPage = () => {
   const theme = usePrefsStore((state) => state.theme)
   const setTheme = usePrefsStore((state) => state.setTheme)
+  const user = useAuthStore((state) => state.user)
+  const fullName =
+    readUserField(user, "fullname") ||
+    readUserField(user, "fullName") ||
+    readUserField(user, "name")
+  const email = readUserField(user, "email")
   const handleThemeChange = (value: string) => {
     if (!value) {
       return
@@ -36,19 +48,30 @@ export const ProfileSettingsPage = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="settings-full-name">Full name</Label>
-                <Input id="settings-full-name" defaultValue="John Doe" />
+                <Input
+                  key={fullName}
+                  id="settings-full-name"
+                  defaultValue={fullName}
+                  placeholder="Your full name"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="settings-email">Email address</Label>
-                <Input id="settings-email" defaultValue="john.doe@email.com" />
+                <Input
+                  key={email}
+                  id="settings-email"
+                  type="email"
+                  defaultValue={email}
+                  placeholder="you@email.com"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="settings-phone">Phone number</Label>
-                <Input id="settings-phone" defaultValue="+1 (555) 123-4567" />
+                <Input id="settings-phone" type="tel" placeholder="Add a phone number" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="settings-timezone">Time zone</Label>
-                <Input id="settings-timezone" defaultValue="(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi" />
+                <Input id="settings-timezone" placeholder="Select your time zone" />
               </div>
             </div>
           </Panel>
@@ -85,7 +108,7 @@ export const ProfileSettingsPage = () => {
               </li>
               <li className="flex items-start justify-between gap-4">
                 <span className="text-muted-foreground">Two-factor authentication</span>
-                <span className="font-medium text-emerald-600">Enabled</span>
+                <span className="font-medium text-status-active">Enabled</span>
               </li>
               <li className="flex items-start justify-between gap-4">
                 <span className="text-muted-foreground">Current session</span>

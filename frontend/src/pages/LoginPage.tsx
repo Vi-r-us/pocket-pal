@@ -21,6 +21,7 @@ import loginHeroDarkMobile from "@/assets/images/illustrations/wallet-with-coins
 import loginHeroLight from "@/assets/images/illustrations/wallet-with-coins-light.png";
 import loginHeroLightMobile from "@/assets/images/illustrations/wallet-with-coins-light-mobile.png";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -340,12 +341,10 @@ export const LoginPage = () => {
 
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="remember-me"
                         checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border border-input text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+                        onCheckedChange={(checked) => setRememberMe(checked === true)}
                       />
                       <Label
                         htmlFor="remember-me"
