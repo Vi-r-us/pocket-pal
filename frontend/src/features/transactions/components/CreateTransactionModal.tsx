@@ -3,6 +3,7 @@ import { CircleDollarSign, Loader2 } from "lucide-react"
 import { AppModal } from "@/components/modals"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -62,6 +63,7 @@ type FormState = {
   categoryId: string
   savingsMode: SavingsMode
   destinationAccountId: string
+  countTowardNextMonth: boolean
 }
 
 const STEP_ORDER: StepKey[] = ["details", "more-details", "review"]
@@ -163,6 +165,7 @@ const buildInitialFormState = (
       categoryId: "",
       savingsMode: "allocate",
       destinationAccountId: "",
+      countTowardNextMonth: false,
     }
   }
 
@@ -183,7 +186,27 @@ const buildInitialFormState = (
     categoryId: String(initialTransaction.category?.category_id ?? ""),
     savingsMode: savingsFields.savingsMode,
     destinationAccountId: savingsFields.destinationAccountId,
+    countTowardNextMonth: isNextMonthAttribution(
+      initialTransaction.accounting_date,
+      initialTransaction.timestamp,
+    ),
   }
+}
+
+const buildAccountingDate = (dateValue: string, on: boolean) => {
+  if (!on || !dateValue) return null
+  const parsed = new Date(`${dateValue}T00:00`)
+  if (Number.isNaN(parsed.getTime())) return null
+  return toDateString(new Date(parsed.getFullYear(), parsed.getMonth() + 1, 1))
+}
+
+const isNextMonthAttribution = (accountingDate: string | null, timestamp: string) => {
+  if (!accountingDate) return false
+  const accounting = new Date(`${accountingDate.slice(0, 10)}T00:00`)
+  const transaction = new Date(timestamp)
+  if (Number.isNaN(accounting.getTime()) || Number.isNaN(transaction.getTime())) return false
+  const expected = new Date(transaction.getFullYear(), transaction.getMonth() + 1, 1)
+  return accounting.getFullYear() === expected.getFullYear() && accounting.getMonth() === expected.getMonth()
 }
 
 const buildTimestampIso = (dateValue: string, timeValue: string) => {
@@ -285,6 +308,11 @@ export const CreateTransactionModal = ({
   }, [accountOptions, form.accountId, selectedCurrencyCode])
   const currentStepIndex = getStepIndex(form.step)
 
+  const accountingDateValue = buildAccountingDate(form.dateValue, form.type === "income" && form.countTowardNextMonth)
+  const nextMonthLabel = accountingDateValue
+    ? new Date(`${accountingDateValue}T00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    : ""
+
   const getStepTriggerClassName = (step: StepKey) => {
     const stepIndex = getStepIndex(step)
     const isCurrentStep = stepIndex === currentStepIndex
@@ -326,6 +354,7 @@ export const CreateTransactionModal = ({
       ...(nextType !== "savings"
         ? { savingsMode: "allocate" as SavingsMode, destinationAccountId: "" }
         : {}),
+      ...(nextType !== "income" ? { countTowardNextMonth: false } : {}),
     }))
   }
 
@@ -400,6 +429,12 @@ export const CreateTransactionModal = ({
           {form.dateValue || "—"} {form.timeValue || ""}
         </span>
       </div>
+      {form.type === "income" && form.countTowardNextMonth && nextMonthLabel ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Counts toward</span>
+          <span className="text-right">{nextMonthLabel}</span>
+        </div>
+      ) : null}
       <div className="flex items-center justify-between gap-3">
         <span className="text-muted-foreground">Category</span>
         <span className="text-right">{selectedCategory?.name || "—"}</span>
@@ -534,6 +569,27 @@ export const CreateTransactionModal = ({
           </div>
         </div>
       </div>
+
+      {form.type === "income" ? (
+        <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-4">
+          <Checkbox
+            id="tx-next-month"
+            checked={form.countTowardNextMonth}
+            onCheckedChange={(checked) =>
+              setForm((previous) => ({ ...previous, countTowardNextMonth: checked === true }))
+            }
+            className="mt-0.5"
+          />
+          <div className="grid gap-1">
+            <Label htmlFor="tx-next-month" className="font-medium">
+              Count toward next month
+            </Label>
+            <p className="text-muted-foreground text-xs">
+              For month-end pay that belongs to next month&apos;s budget.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 
@@ -742,6 +798,7 @@ export const CreateTransactionModal = ({
         type: form.type,
         source,
         description,
+        accounting_date: buildAccountingDate(form.dateValue, form.type === "income" && form.countTowardNextMonth),
         ...(timestampIso ? { timestamp: timestampIso } : {}),
         ...(form.type === "savings" && mode !== "edit"
           ? {

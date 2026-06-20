@@ -35,6 +35,7 @@ const defineTransactionModel = (sequelize) => {
       metadata: { type: DataTypes.JSONB, allowNull: true },
 
       timestamp: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+      accounting_date: { type: DataTypes.DATEONLY, allowNull: true },
     },
     {
       sequelize,

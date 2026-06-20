@@ -1,7 +1,7 @@
 import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
-import { Op } from "sequelize";
+import { Op, fn, col, where as sequelizeWhere } from "sequelize";
 import { isPrimarySavingsContribution } from "../utils/savingsTransaction.js";
 import {
   Account,
@@ -272,8 +272,12 @@ async function getBudgetSummary(userId, yyyyMm) {
     const transactions = await Transaction.findAll({
       where: {
         user_id: userId,
-        timestamp: { [Op.between]: [startDate, endDate] },
         type: { [Op.in]: ["expense", "income", "savings"] },
+        [Op.and]: [
+          sequelizeWhere(fn("COALESCE", col("accounting_date"), col("timestamp")), {
+            [Op.between]: [startDate, endDate],
+          }),
+        ],
       },
       attributes: ["category_id", "base_currency", "amount_base_minor", "type", "metadata"],
       raw: true,
