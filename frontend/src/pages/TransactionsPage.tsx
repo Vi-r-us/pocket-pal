@@ -27,7 +27,7 @@ import { getInlineErrorMessage } from "@/lib/errors/normalize"
 import { inputValueToYyyyMm, yyyyMmToInputValue } from "@/lib/month"
 import { resolveCategoryIcon } from "@/lib/categoryIcons"
 import { cn } from "@/lib/utils"
-import { DEFAULT_ADVANCED_FILTERS } from "@/types/transaction"
+import { DEFAULT_ADVANCED_FILTERS, getAmortizationMeta } from "@/types/transaction"
 import type {
   AccountFilterOption,
   AdvancedFilterState,
@@ -90,6 +90,12 @@ const getSavingsTransferBadgeLabel = (metadata: Record<string, unknown> | null |
   }
   if (metadata.transfer_leg === "primary") return "Transfer"
   return null
+}
+
+const getAmortizationBadgeLabel = (metadata: Record<string, unknown> | null | undefined) => {
+  const amortization = getAmortizationMeta(metadata)
+  if (!amortization) return null
+  return `${amortization.index + 1}/${amortization.count}`
 }
 
 const toIntegerOrNull = (value: string) => {
@@ -284,6 +290,11 @@ const MobileTransactionCards = ({
                 {getSavingsTransferBadgeLabel(row.raw_transaction.metadata) ? (
                   <Badge variant="secondary" className="rounded-full">
                     {getSavingsTransferBadgeLabel(row.raw_transaction.metadata)}
+                  </Badge>
+                ) : null}
+                {getAmortizationBadgeLabel(row.raw_transaction.metadata) ? (
+                  <Badge variant="secondary" className="rounded-full">
+                    Spread {getAmortizationBadgeLabel(row.raw_transaction.metadata)}
                   </Badge>
                 ) : null}
                 <Badge variant="ghost">{formatSourceLabel(row.source)}</Badge>
@@ -768,6 +779,7 @@ export const TransactionsPage = () => {
         enableSorting: false,
         cell: ({ row }) => {
           const transferBadge = getSavingsTransferBadgeLabel(row.original.raw_transaction.metadata)
+          const amortizationBadge = getAmortizationBadgeLabel(row.original.raw_transaction.metadata)
           return (
             <div className="flex min-w-[6.25rem] flex-wrap items-center gap-2">
               <Badge variant="outline" className={TYPE_BADGE_CLASSES[row.original.type]}>
@@ -776,6 +788,11 @@ export const TransactionsPage = () => {
               {transferBadge ? (
                 <Badge variant="secondary" className="rounded-full">
                   {transferBadge}
+                </Badge>
+              ) : null}
+              {amortizationBadge ? (
+                <Badge variant="secondary" className="rounded-full">
+                  Spread {amortizationBadge}
                 </Badge>
               ) : null}
               <Badge variant="ghost" className="text-wrap text-ellipsis">

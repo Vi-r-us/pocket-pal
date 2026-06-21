@@ -53,6 +53,30 @@ export type TransactionCategory = {
   group: TransactionCategoryGroup | null
 }
 
+export type AmortizationMeta = {
+  group_id: string
+  index: number
+  count: number
+  total_minor: number
+  start_month: string
+}
+
+export const getAmortizationMeta = (
+  metadata: Record<string, unknown> | null | undefined,
+): AmortizationMeta | null => {
+  if (!metadata || typeof metadata.amortization !== "object" || metadata.amortization === null) return null
+  const amortization = metadata.amortization as Record<string, unknown>
+  const count = Number(amortization.count)
+  if (!Number.isFinite(count) || count < 2) return null
+  return {
+    group_id: String(amortization.group_id ?? ""),
+    index: Number(amortization.index) || 0,
+    count,
+    total_minor: Number(amortization.total_minor) || 0,
+    start_month: String(amortization.start_month ?? ""),
+  }
+}
+
 export type TransactionListItem = {
   transaction_id: number
   amount_minor: number | string

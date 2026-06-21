@@ -61,9 +61,29 @@ const createTransactionSchema = Joi.object({
   destination_account_id: Joi.number().integer().positive().optional().messages({
     "number.base": "destination_account_id must be a number",
   }),
+  amortization_months: Joi.number().integer().min(1).max(24).optional().messages({
+    "number.base": "amortization_months must be a number",
+    "number.integer": "amortization_months must be an integer",
+    "number.min": "amortization_months must be at least 1",
+    "number.max": "amortization_months must be at most 24",
+  }),
 })
   .custom((value, helpers) => {
     const normalizedType = String(value.type || "").toLowerCase();
+
+    if (value.amortization_months && Number(value.amortization_months) > 1) {
+      if (normalizedType !== "expense") {
+        return helpers.error("any.custom", {
+          message: "amortization_months is only supported for expense transactions",
+        });
+      }
+      if (value.savings_mode === "transfer" || value.destination_account_id) {
+        return helpers.error("any.custom", {
+          message: "amortization_months cannot be combined with savings transfer fields",
+        });
+      }
+    }
+
     if (normalizedType !== "savings") {
       return value;
     }
