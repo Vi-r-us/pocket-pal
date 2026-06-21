@@ -210,6 +210,7 @@ async function createSavingsAllocateTransaction(userId, data, account, category,
     description: data.description ?? "",
     metadata,
     timestamp,
+    accounting_date: data.accounting_date ?? null,
   });
 
   return transaction;
@@ -251,6 +252,7 @@ async function createSavingsExternalTransfer(userId, data, account, category, no
         description: data.description ?? "",
         metadata,
         timestamp,
+        accounting_date: data.accounting_date ?? null,
       },
       { transaction: dbTransaction }
     );
@@ -312,6 +314,7 @@ async function createSavingsTransferPair(userId, data, account, category, normal
         description: data.description ?? "",
         metadata: primaryMetadata,
         timestamp,
+        accounting_date: data.accounting_date ?? null,
       },
       { transaction: dbTransaction }
     );
@@ -431,6 +434,7 @@ async function createTransaction(userId, data) {
       description: data.description ?? "",
       metadata: data.metadata ?? null,
       timestamp,
+      accounting_date: data.accounting_date ?? null,
     });
 
     const balanceDelta = getBalanceDelta(normalizedType, data.amount_minor);
@@ -469,6 +473,7 @@ const mapTransactionListDTO = (transaction) => {
     description: tx.description,
     metadata: tx.metadata,
     timestamp: tx.timestamp,
+    accounting_date: tx.accounting_date ?? null,
     account: tx.account || null,
     category: tx.category || null,
   };
@@ -489,6 +494,7 @@ const mapTransactionDetailDTO = (transaction) => {
     description: tx.description,
     metadata: tx.metadata,
     timestamp: tx.timestamp,
+    accounting_date: tx.accounting_date ?? null,
     created_at: tx.created_at ?? tx.createdAt ?? null,
     updated_at: tx.updated_at ?? tx.updatedAt ?? null,
     account: tx.account || null,
@@ -761,6 +767,7 @@ async function updateTransaction(userId, transactionId, data) {
     if (data.metadata !== undefined) allowed.metadata = data.metadata;
     if (data.source !== undefined) allowed.source = data.source;
     if (data.timestamp !== undefined) allowed.timestamp = data.timestamp;
+    if (data.accounting_date !== undefined) allowed.accounting_date = data.accounting_date;
 
     if (data.account_id !== undefined) allowed.account_id = nextAccountId;
     if (data.category_id !== undefined) allowed.category_id = nextCategoryId;

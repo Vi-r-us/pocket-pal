@@ -46,6 +46,9 @@ const createTransactionSchema = Joi.object({
   timestamp: Joi.date().iso().optional().messages({
     "date.format": "timestamp must be in ISO 8601 format (e.g. 2026-02-16 or 2026-02-16T10:30:00.000Z)",
   }),
+  accounting_date: Joi.date().iso().optional().allow(null).messages({
+    "date.format": "accounting_date must be an ISO date (e.g. 2026-07-01)",
+  }),
   savings_mode: Joi.string()
     .lowercase()
     .trim()
@@ -204,6 +207,9 @@ const updateTransactionSchema = Joi.object({
   }),
   timestamp: Joi.date().iso().optional().messages({
     "date.format": "timestamp must be in ISO 8601 format (e.g. 2026-02-16 or 2026-02-16T10:30:00.000Z)",
+  }),
+  accounting_date: Joi.date().iso().optional().allow(null).messages({
+    "date.format": "accounting_date must be an ISO date (e.g. 2026-07-01)",
   }),
 })
   .min(1)

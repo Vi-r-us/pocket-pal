@@ -62,6 +62,7 @@ export type TransactionListItem = {
   description: string | null
   metadata: Record<string, unknown> | null
   timestamp: string
+  accounting_date: string | null
   account: TransactionAccount | null
   category: TransactionCategory | null
 }
