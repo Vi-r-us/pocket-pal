@@ -64,6 +64,7 @@ type FormState = {
   savingsMode: SavingsMode
   destinationAccountId: string
   countTowardNextMonth: boolean
+  amortizeMonths: string
 }
 
 const STEP_ORDER: StepKey[] = ["details", "more-details", "review"]
@@ -166,6 +167,7 @@ const buildInitialFormState = (
       savingsMode: "allocate",
       destinationAccountId: "",
       countTowardNextMonth: false,
+      amortizeMonths: "1",
     }
   }
 
@@ -190,6 +192,7 @@ const buildInitialFormState = (
       initialTransaction.accounting_date,
       initialTransaction.timestamp,
     ),
+    amortizeMonths: "1",
   }
 }
 
@@ -313,6 +316,26 @@ export const CreateTransactionModal = ({
     ? new Date(`${accountingDateValue}T00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" })
     : ""
 
+  const amortizeMonthsCount = Number(form.amortizeMonths) || 1
+  const isAmortized = form.type === "expense" && mode !== "edit" && amortizeMonthsCount > 1
+  const amortizationSummary = useMemo(() => {
+    if (!isAmortized) return null
+    const totalMinor = parseMajorAmountToMinor(form.amountMajor)
+    if (totalMinor === null || !form.dateValue) return null
+    const perMonthMajor = (totalMinor / amortizeMonthsCount / 100).toFixed(2)
+    const start = new Date(`${form.dateValue}T00:00`)
+    if (Number.isNaN(start.getTime())) return null
+    const startLabel = new Date(start.getFullYear(), start.getMonth(), 1).toLocaleDateString(undefined, {
+      month: "short",
+      year: "numeric",
+    })
+    const endLabel = new Date(start.getFullYear(), start.getMonth() + amortizeMonthsCount - 1, 1).toLocaleDateString(
+      undefined,
+      { month: "short", year: "numeric" },
+    )
+    return { perMonthMajor, startLabel, endLabel }
+  }, [isAmortized, form.amountMajor, form.dateValue, amortizeMonthsCount])
+
   const getStepTriggerClassName = (step: StepKey) => {
     const stepIndex = getStepIndex(step)
     const isCurrentStep = stepIndex === currentStepIndex
@@ -355,6 +378,7 @@ export const CreateTransactionModal = ({
         ? { savingsMode: "allocate" as SavingsMode, destinationAccountId: "" }
         : {}),
       ...(nextType !== "income" ? { countTowardNextMonth: false } : {}),
+      ...(nextType !== "expense" ? { amortizeMonths: "1" } : {}),
     }))
   }
 
@@ -433,6 +457,15 @@ export const CreateTransactionModal = ({
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">Counts toward</span>
           <span className="text-right">{nextMonthLabel}</span>
+        </div>
+      ) : null}
+      {isAmortized && amortizationSummary ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Spreads over</span>
+          <span className="text-right">
+            {amortizeMonthsCount} months · ~{amortizationSummary.perMonthMajor} {selectedCurrencyCode || ""}/mo (
+            {amortizationSummary.startLabel} – {amortizationSummary.endLabel})
+          </span>
         </div>
       ) : null}
       <div className="flex items-center justify-between gap-3">
@@ -652,6 +685,34 @@ export const CreateTransactionModal = ({
         {errors.account_id ? <p className="text-destructive text-xs">{errors.account_id}</p> : null}
       </div>
 
+      {form.type === "expense" && mode !== "edit" ? (
+        <div className="grid gap-3 rounded-lg border bg-muted/20 p-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="tx-amortize-months">Spread over months</Label>
+            <Input
+              id="tx-amortize-months"
+              type="number"
+              min={1}
+              max={24}
+              inputMode="numeric"
+              value={form.amortizeMonths}
+              onChange={(event) => setForm((previous) => ({ ...previous, amortizeMonths: event.target.value }))}
+              className="w-28"
+            />
+            <p className="text-muted-foreground text-xs">
+              Splits this expense evenly across the months for budgeting; the full amount still leaves your account
+              now. Use 1 for no spread.
+            </p>
+            {amortizationSummary ? (
+              <p className="text-muted-foreground text-xs">
+                ~{amortizationSummary.perMonthMajor} {selectedCurrencyCode || ""}/mo · {amortizationSummary.startLabel}{" "}
+                – {amortizationSummary.endLabel}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {form.type === "savings" ? (
         <div className="grid gap-3 rounded-lg border bg-muted/20 p-4">
           <div className="grid gap-2">
@@ -799,6 +860,7 @@ export const CreateTransactionModal = ({
         source,
         description,
         accounting_date: buildAccountingDate(form.dateValue, form.type === "income" && form.countTowardNextMonth),
+        ...(isAmortized ? { amortization_months: amortizeMonthsCount } : {}),
         ...(timestampIso ? { timestamp: timestampIso } : {}),
         ...(form.type === "savings" && mode !== "edit"
           ? {

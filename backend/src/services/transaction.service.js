@@ -20,6 +20,7 @@ import {
   getTransferLeg,
   isPrimarySavingsContribution,
 } from "../utils/savingsTransaction.js";
+import { buildAmortizationMetadata, getAmortizationGroupId } from "../utils/amortizationTransaction.js";
 
 /**
  * Resolve base currency for a user: user.base_currency if set and valid, else account.currency_code.
@@ -180,6 +181,33 @@ async function findLinkedTransferTransactions(userId, transaction) {
       ],
     },
   });
+}
+
+/**
+ * Resolve all transactions that should be acted on together with the given one:
+ * transfer-group legs or amortization-group slices. Falls back to the single transaction.
+ */
+async function findLinkedTransactions(userId, transaction) {
+  const metadata = getTransactionMetadata(transaction);
+
+  if (metadata.transfer_group_id) {
+    return findLinkedTransferTransactions(userId, transaction);
+  }
+
+  const amortizationGroupId = getAmortizationGroupId(transaction);
+  if (amortizationGroupId) {
+    return Transaction.findAll({
+      where: {
+        user_id: userId,
+        [Op.or]: [
+          { transaction_id: transaction.transaction_id },
+          { metadata: { [Op.contains]: { amortization: { group_id: amortizationGroupId } } } },
+        ],
+      },
+    });
+  }
+
+  return [transaction];
 }
 
 async function createSavingsAllocateTransaction(userId, data, account, category, normalizedType) {
@@ -375,6 +403,84 @@ async function createSavingsTransferPair(userId, data, account, category, normal
 }
 
 /**
+ * Create an amortized (spread) expense: expand into N expense slices, one attributed to each month
+ * via accounting_date. The full amount leaves the account now (sum of per-slice balance deltas).
+ */
+async function createAmortizedTransaction(userId, data, account, normalizedType) {
+  const currency = (data.currency || account.currency_code).toString().toUpperCase();
+  const currencyExists = await Currency.findByPk(currency);
+  if (!currencyExists) {
+    throw new ApiError(400, "Invalid currency code");
+  }
+
+  const months = Number(data.amortization_months);
+  const total = Number(data.amount_minor);
+  const baseSlice = Math.floor(total / months);
+  const remainder = total - baseSlice * months;
+
+  const timestamp = data.timestamp || new Date();
+  const ts = new Date(timestamp);
+  const year = ts.getUTCFullYear();
+  const month = ts.getUTCMonth();
+  const startMonth = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const groupId = randomUUID();
+
+  const { baseCurrency, fxRate } = await computeFxSnapshot(userId, {
+    amountMinor: total,
+    currency,
+    account,
+    timestamp,
+  });
+  const fromCurrencyRow = await Currency.findByPk(currency);
+  const baseCurrencyRow = await Currency.findByPk(baseCurrency);
+
+  return sequelize.transaction(async (dbTransaction) => {
+    let firstSlice = null;
+    for (let index = 0; index < months; index += 1) {
+      const sliceAmount = baseSlice + (index === 0 ? remainder : 0);
+      const accountingDate = new Date(Date.UTC(year, month + index, 1)).toISOString().slice(0, 10);
+      const sliceBaseMinor = computeAmountBaseMinor(
+        sliceAmount,
+        fxRate.rate,
+        fromCurrencyRow.minor_unit,
+        baseCurrencyRow.minor_unit
+      );
+
+      const metadata = {
+        ...(data.metadata && typeof data.metadata === "object" ? data.metadata : {}),
+        ...buildAmortizationMetadata({ groupId, index, count: months, totalMinor: total, startMonth }),
+      };
+
+      const slice = await Transaction.create(
+        {
+          user_id: userId,
+          account_id: data.account_id,
+          category_id: data.category_id,
+          amount_minor: sliceAmount,
+          currency,
+          base_currency: baseCurrency,
+          amount_base_minor: sliceBaseMinor,
+          fx_rate_id: fxRate.fx_rate_id,
+          type: normalizedType,
+          source: data.source || "manual",
+          description: data.description ?? "",
+          metadata,
+          timestamp,
+          accounting_date: accountingDate,
+        },
+        { transaction: dbTransaction }
+      );
+
+      const delta = getBalanceDelta(normalizedType, sliceAmount);
+      await applyBalanceDelta(account, delta, dbTransaction);
+
+      if (index === 0) firstSlice = slice;
+    }
+    return firstSlice;
+  });
+}
+
+/**
  * Create a transaction and store snapshot (base_currency, amount_base_minor, fx_rate_id). Updates account balance.
  */
 async function createTransaction(userId, data) {
@@ -409,6 +515,15 @@ async function createTransaction(userId, data) {
 
       const transaction = await createSavingsAllocateTransaction(userId, data, account, category, normalizedType);
       logger.info({ userId, transactionId: transaction.transaction_id }, "Allocate savings created");
+      return transaction;
+    }
+
+    if (normalizedType === "expense" && Number(data.amortization_months) > 1) {
+      const transaction = await createAmortizedTransaction(userId, data, account, normalizedType);
+      logger.info(
+        { userId, transactionId: transaction.transaction_id, months: Number(data.amortization_months) },
+        "Amortized expense created"
+      );
       return transaction;
     }
 
@@ -708,6 +823,19 @@ function assertTransferEditableFields(transaction, data) {
   }
 }
 
+function assertAmortizationEditableFields(transaction, data) {
+  if (!getAmortizationGroupId(transaction)) return;
+
+  const blockedFields = ["account_id", "amount_minor", "currency", "type", "category_id", "amortization_months"];
+  const attempted = blockedFields.filter((field) => data[field] !== undefined);
+  if (attempted.length > 0) {
+    throw new ApiError(
+      400,
+      "Spread expenses cannot change amount, account, category, type, or months. Delete and recreate instead."
+    );
+  }
+}
+
 /**
  * Update transaction (only safe fields). Only owner can update.
  */
@@ -735,6 +863,7 @@ async function updateTransaction(userId, transactionId, data) {
     }
 
     assertTransferEditableFields(transaction, data);
+    assertAmortizationEditableFields(transaction, data);
 
     const currentAccount = await resolveAccount(userId, transaction.account_id);
 
@@ -874,7 +1003,7 @@ async function deleteTransaction(userId, transactionId) {
       throw new ApiError(404, "Transaction not found");
     }
 
-    const linked = await findLinkedTransferTransactions(userId, transaction);
+    const linked = await findLinkedTransactions(userId, transaction);
 
     await sequelize.transaction(async (dbTransaction) => {
       for (const leg of linked) {
