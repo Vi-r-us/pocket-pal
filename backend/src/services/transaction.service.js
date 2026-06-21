@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import handleServerError from "../utils/handleServerError.js";
 import logger from "../utils/logger.js";
 import ApiError from "../utils/ApiError.js";
-import { Op } from "sequelize";
+import { Op, fn, col, where as sequelizeWhere } from "sequelize";
 import { sequelize } from "../db/sequelize.js";
 import { Account, Category, CategoryGroup, Currency, FXRate, Transaction, User } from "../models/index.js";
 import { getOrFetchRate } from "./fx.service.js";
@@ -81,16 +81,22 @@ function buildTransactionsWhere(userId, params = {}) {
   }
 
   if (date_from != null || date_to != null) {
-    where.timestamp = {};
+    // Filter by the effective reporting date so income (or any transaction) attributed
+    // to a different month via accounting_date lands in that month's list and metrics.
+    const effectiveDate = fn("COALESCE", col("Transaction.accounting_date"), col("Transaction.timestamp"));
+    const dateConditions = [];
     if (date_from != null) {
       const startOfDay = new Date(date_from);
       startOfDay.setUTCHours(0, 0, 0, 0);
-      where.timestamp[Op.gte] = sanitizeDate(startOfDay);
+      dateConditions.push(sequelizeWhere(effectiveDate, { [Op.gte]: sanitizeDate(startOfDay) }));
     }
     if (date_to != null) {
       const endOfDay = new Date(date_to);
       endOfDay.setUTCHours(23, 59, 59, 999);
-      where.timestamp[Op.lte] = sanitizeDate(endOfDay);
+      dateConditions.push(sequelizeWhere(effectiveDate, { [Op.lte]: sanitizeDate(endOfDay) }));
+    }
+    if (dateConditions.length > 0) {
+      where[Op.and] = dateConditions;
     }
   }
 
